@@ -6,36 +6,38 @@ from gamuLogger.custom_types import COLORS
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Start the HTTP server.")
-    #take a number between FATAL (0) and TRACE (5) (usage : -d 2 or -d (will set to 4))
-    parser.add_argument("-d", "--debug", type=int, choices=range(6), default=3,
-                        metavar="LEVEL", nargs="?", const=4,
-                        help="Set the debug level (0-5, default: 3 if not specified, 4 if used without number)")
     
+    logging_group = parser.add_argument_group("Logging options")
+    
+    logging_group.add_argument("-d", "--debug", type=str, metavar="LEVEL",
+        choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL"], default="INFO", nargs="?", const="DEBUG",
+        help="Set the logging level for the console (default: INFO if not specified, DEBUG if used without value). Possible values are: FATAL, ERROR, WARNING, INFO, DEBUG, TRACE")
+    
+    logging_group.add_argument("--log-file", type=str, action="append", default=[], metavar="FILE:LEVEL",
+        help="Add a log file, with the format <file_path>:<level>. The level can be one of the following: FATAL, ERROR, WARNING, INFO, DEBUG, TRACE. Can be used multiple times.")
+
+
     parser.add_argument("-p", "--port", type=int, default=5000,
                         help="Port to run the server on (default: 5000)")
     return parser.parse_args()
 
 def set_log_level(args):
-    if args.debug == 0:
-        level = Levels.FATAL
-    elif args.debug == 1:
-        level = Levels.ERROR
-    elif args.debug == 2:
-        level = Levels.WARNING
-    elif args.debug == 3:
-        level = Levels.INFO
-    elif args.debug == 4:
-        level = Levels.DEBUG
-    elif args.debug == 5:
-        level = Levels.TRACE
-    
+    level = Levels.from_string(args.debug)
     Logger.set_level("stdout", level)
+    
+def set_log_files(args):
+    for log_file in args.log_file:
+        file_path, level = log_file.split(":")
+        print(file_path)
+        level = Levels.from_string(level)
+        Logger.add_target(file_path, level)
 
 
 
 def main():
     args = parse_args()
     set_log_level(args)
+    set_log_files(args)
     server = HttpServer(port=args.port)
     server.start()
 
