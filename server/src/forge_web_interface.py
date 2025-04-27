@@ -1,12 +1,17 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from version import Version
 import json
 from typing import Any
 from datetime import datetime
+from gamuLogger import Logger, Levels
 
-RE_VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)$")
+from version import Version
+
+Logger.set_module("forge_reader")
+
+RE_MC_VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)$")
+RE_FORGE_VERSION = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.([0-9]+))?")
 
 class JsonEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -24,9 +29,18 @@ class WebInterface:
         """
         Fetches the list of Minecraft versions from the Forge website.
         """
+        Logger.set_module("forge_reader.mc_versions")
+        
+        Logger.debug(f"Fetching {WebInterface.base_url} for Minecraft versions.")
         response = requests.get(WebInterface.base_url)
-        response.raise_for_status()
+        if not response.ok:
+            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_url}. Status code: {response.status_code}")
+        Logger.trace(f"Response status code: {response.status_code}")
+        
         html_content = response.text
+        
+        Logger.trace("Scraping HTML content for Minecraft versions.")
+        
         # find the first element with the class "sidebar-nav"
         soup = BeautifulSoup(html_content, 'html.parser')
         sidebar_nav = soup.find(class_="sidebar-nav")
@@ -37,11 +51,12 @@ class WebInterface:
         # keep only the links where the text matches the regex
         mc_versions : dict[Version, str] = {} # version : web page relative path
         for link in links:
-            match = RE_VERSION.match(link.text)
+            match = RE_MC_VERSION.match(link.text)
             if match:
+                Logger.trace(f"Found Minecraft version: {link.text}")
                 mc_versions[Version.from_string(link.text)] = link['href']
-        # sort the versions
 
+        Logger.debug(f"Found {len(mc_versions)} Minecraft versions.")
         return mc_versions
     
     @staticmethod
@@ -51,8 +66,16 @@ class WebInterface:
         :param page_path: Relative path to the version page
         :return: HTML content of the page
         """
+        Logger.set_module("forge_reader.forge_versions")
+        
+        Logger.debug(f"Fetching {WebInterface.base_url + page_path} for Forge versions.")
+        
         response = requests.get(WebInterface.base_url + page_path)
-        response.raise_for_status()
+        if not response.ok:
+            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_url + page_path}. Status code: {response.status_code}")
+        Logger.trace(f"Response status code: {response.status_code}")
+        
+        Logger.trace("Scraping HTML content for Forge versions.")
         html_content = response.text
         # find element with class "download"
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -75,8 +98,14 @@ class WebInterface:
             data['recommended'] = promo_recommended is not None
             promo_latest = download_version.find('i', class_='promo-latest')
             data['latest'] = promo_latest is not None
+            bugged = download_version.find('i', class_='fa-bug')
+            data['bugged'] = bugged is not None
             
             version = download_version.text.strip()
+            version_match = RE_FORGE_VERSION.match(version)
+            if not version_match:
+                raise ValueError(f"Invalid Forge version format: {version}")
+            version = version_match.group(0)
             
             download_time = row.find('td', class_='download-time')
             data['time'] = datetime.strptime(download_time['title'], "%Y-%m-%d %H:%M:%S")
@@ -89,15 +118,25 @@ class WebInterface:
                     info_link = link.find('a', class_='info-link')
                     if info_link:
                         data['installer'] = info_link['href']
+                        break
+            else:
+                Logger.warning(f"No installer link found for forge version: {version}")
+                continue
+            Logger.trace(f"Found Forge version: {version}. Recommended: {data['recommended']}, Latest: {data['latest']}, Time: {data['time']}, Installer: {data['installer']}")
             
             forge_versions[Version.from_string(version)] = data
             
+        Logger.debug(f"Found {len(forge_versions)} Forge versions.")
         return forge_versions
         
 
 if __name__ == "__main__":
-    # versions = {str(k) : v for k,v in WebInterface.get_mc_versions().items()}
+    
+    Logger.set_level("stdout", Levels.DEBUG)
+    
+    mc_versions = WebInterface.get_mc_versions()
     # print(json.dumps(versions, indent=4, cls=JsonEncoder))
     
-    versions = {str(k) : v for k,v in WebInterface.get_forge_versions("index_1.20.1.html").items()}
-    print(json.dumps(versions, indent=4, cls=JsonEncoder))
+    for k,v in mc_versions.items():
+        WebInterface.get_forge_versions(v)
+        # print(json.dumps(versions, indent=4, cls=JsonEncoder))
