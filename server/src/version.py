@@ -13,9 +13,9 @@ class Version:
         
         :param args: Version elements (major, minor, patch, etc.)
         """
-        if len(args) == 0:
+        if not args:
             raise ValueError("Version must be initialized with at least one argument.")
-        
+
         self.__elements = args
 
     @classmethod
@@ -46,7 +46,7 @@ class Version:
 
         :return: String representation
         """
-        return "Version(+".join(map(str, self.__elements)) + ")"
+        return "Version(" + ", ".join(map(str, self.__elements)) + ")"
     
     def __prepare_comparison(self, other : 'Version') -> tuple[tuple[int, ...], tuple[int, ...]]:
         """

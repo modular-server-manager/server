@@ -1,4 +1,4 @@
-from .server import HttpServer
+from .server import Server
 import argparse
 from gamuLogger import Logger, Levels
 from gamuLogger.custom_types import COLORS
@@ -38,7 +38,7 @@ def main():
     args = parse_args()
     set_log_level(args)
     set_log_files(args)
-    server = HttpServer(port=args.port)
+    server = Server(port=args.port)
     server.start()
 
 if __name__ == "__main__":

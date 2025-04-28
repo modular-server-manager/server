@@ -57,7 +57,15 @@ class WebInterface:
                 Logger.debug(f"Found Minecraft version: {link.text}")
                 mc_versions[Version.from_string(link.text)] = link['href']
 
+        if active := sidebar_nav.find(class_="elem-active"):
+            version = active.text.strip()
+            link = f"index_{version}.html"
+            if RE_MC_VERSION.match(version):
+                Logger.debug(f"Found Minecraft version: {version}")
+                mc_versions[Version.from_string(version)] = link
+
         Logger.debug(f"Found {len(mc_versions)} Minecraft versions.")
+        Logger.trace(f"Found Minecraft versions: {mc_versions}")
         return mc_versions
     
     @staticmethod
@@ -125,3 +133,23 @@ class WebInterface:
 
         Logger.debug(f"Found {len(forge_versions)} Forge versions.")
         return forge_versions
+
+    @staticmethod
+    @Cache(expire_in=timedelta(days=1))
+    def get_forge_installer_url(mc_version: Version, forge_version: Version) -> str:
+        """
+        Fetches the installer URL for a specific Minecraft and Forge version.
+        :param mc_version: Minecraft version
+        :param forge_version: Forge version
+        :return: Installer URL
+        """
+        mc_versions = WebInterface.get_mc_versions()
+        if mc_version not in mc_versions:
+            raise ValueError(f"Invalid Minecraft version: {mc_version}")
+        
+        page_path = mc_versions[mc_version]
+        forge_versions = WebInterface.get_forge_versions(page_path)
+        if forge_version not in forge_versions:
+            raise ValueError(f"Invalid Forge version: {forge_version}")
+
+        return forge_versions[forge_version]['installer']
