@@ -9,6 +9,8 @@ import socketio
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 
+Logger.set_module("server")
+
 class Server(HttpServer, WebSocketServer):
     def __init__(self, port: int = 5000):
         HttpServer.__init__(self, port)

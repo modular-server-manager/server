@@ -12,7 +12,7 @@ from ..utils.config import JSONConfig
 from ..forge import installer
 from .database import Database, McServer, ServerStatus
 
-Logger.set_module("server")
+Logger.set_module("http_server")
 
 BASE_PATH = __file__[:__file__.rfind('/')] # get the base path of the server
 

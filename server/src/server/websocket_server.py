@@ -1,7 +1,7 @@
 import socketio
 from gamuLogger import Logger
 
-
+Logger.set_module("socket_server")
 
 class WebSocketServer:
     def __init__(self):
