@@ -5,11 +5,12 @@ from gamuLogger import Logger
 from mimetypes import guess_type
 import traceback
 
-from .forge_web_interface import WebInterface
-from .version import Version
-from .config import JSONConfig
-from .http_code import HttpCode as HTTP
-from . import installer
+from ..forge.web_interface import WebInterface
+from ..utils.http_code import HttpCode as HTTP
+from ..utils.version import Version
+from ..utils.config import JSONConfig
+from ..forge import installer
+from .database import Database, McServer, ServerStatus
 
 Logger.set_module("server")
 
@@ -20,7 +21,8 @@ STATIC_PATH = f'{BASE_PATH}/client'
 
 class HttpServer:
     def __init__(self, port: int = 5000):
-        self.config = JSONConfig(f"{BASE_PATH}/config.json")
+        self.config = JSONConfig(f"{BASE_PATH}/../config.json")
+        self.database = Database(self.config.get("database_path"))
         self._port = port
         self.__app = Flask(__name__)
 
@@ -77,22 +79,24 @@ class HttpServer:
             Logger.trace(f"Server {server_name} not found")
             return "Server Not Found", HTTP.NOT_FOUND
 
-        def create_new_server(server_name: str, mc_version: str, forge_version: str):
+        def create_new_server(server_name: str, mc_version: Version, forge_version: Version):
             servers = self.config.get("servers", default={}, set=True)
             if server_name in servers:
                 Logger.trace(f"Server {server_name} already exists")
                 return "Server Already Exists", HTTP.CONFLICT
             servers_path = self.config.get("forge_servers_path")
             server_path = os.path.join(servers_path, server_name)
-            self.config.set(f"servers.{server_name}", {
-                "mc_version": mc_version,
-                "forge_version": forge_version,
-                "status": "creating",
-                "path": "${forge_servers_path}/" + server_name,
-            })
-            url = WebInterface.get_forge_installer_url(Version.from_string(mc_version), Version.from_string(forge_version))
+            
+            url = WebInterface.get_forge_installer_url(mc_version, forge_version)
             installer.install(url, server_path)
-            self.config.set(f"servers.{server_name}.status", "stopped")
+            srv = McServer(
+                name=server_name,
+                mc_version=mc_version,
+                forge_version=forge_version,
+                status=ServerStatus.STOPPED,
+                path=server_path
+            )
+            self.database.add_server(srv)
             return "Server Created", HTTP.CREATED
 
         @self.__app.route('/api/<path:path>', methods=['GET'])
@@ -117,7 +121,7 @@ class HttpServer:
                     if not server_name or not mc_version or not forge_version:
                         Logger.trace("Missing parameters for create_server. got name: {}, path: {}, mc_version: {}, forge_version: {}".format(server_name, server_path, mc_version, forge_version))
                         return "Missing parameters", HTTP.BAD_REQUEST
-                    return create_new_server(server_name, mc_version, forge_version)
+                    return create_new_server(server_name, Version.from_string(mc_version), Version.from_string(forge_version))
                 else:
                     Logger.trace(f"Unknown API path: {path}")
                     return "Not Found", HTTP.NOT_FOUND

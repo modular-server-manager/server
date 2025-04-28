@@ -9,7 +9,7 @@ from gamuLogger import Logger
 Logger.set_module("config")
 
 class BaseConfig(ABC):
-    RE_REFERENCE = re.compile(r'^\$\{([a-zA-Z0-9_.]+)\}$')
+    RE_REFERENCE = re.compile(r'\$\{([a-zA-Z0-9_.]+)\}')
     def __init__(self):
         self._config = {}
         self._load()

@@ -1,7 +1,6 @@
-from .server import Server
+from .server.server import Server
 import argparse
 from gamuLogger import Logger, Levels
-from gamuLogger.custom_types import COLORS
 
 
 def parse_args():
@@ -28,7 +27,6 @@ def set_log_level(args):
 def set_log_files(args):
     for log_file in args.log_file:
         file_path, level = log_file.split(":")
-        print(file_path)
         level = Levels.from_string(level)
         Logger.add_target(file_path, level)
 

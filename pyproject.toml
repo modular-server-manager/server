@@ -33,6 +33,6 @@ dependencies = [
 mc-srv-manager = "mc_srv_manager.__main__:main"
 
 [tool.setuptools]
-packages = ["mc_srv_manager"]
-package-data = { "mc_srv_manager" = ["client/**"] }
+packages = ["mc_srv_manager", "mc_srv_manager.server", "mc_srv_manager.forge", "mc_srv_manager.utils"]
+package-data = { "mc_srv_manager" = ["client/**", "config.json"] }
 include-package-data = true

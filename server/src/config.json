@@ -1,0 +1,5 @@
+{
+    "app_data_path" : "/var/minecraft",
+    "forge_servers_path" : "${app_data_path}/servers",
+    "database_path" : "${app_data_path}/server.db"
+}

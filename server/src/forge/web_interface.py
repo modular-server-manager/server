@@ -6,8 +6,8 @@ from typing import Any
 from datetime import datetime
 from gamuLogger import Logger, Levels
 
-from .cache import Cache, timedelta
-from .version import Version
+from ..utils.cache import Cache, timedelta
+from ..utils.version import Version
 
 Logger.set_module("forge_reader")
 
