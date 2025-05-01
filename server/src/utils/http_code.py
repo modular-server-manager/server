@@ -3,9 +3,9 @@ from enum import IntEnum
 class HttpCode(IntEnum):
     """HTTP status codes, compatible with Flask"""
     # Informational
-    CONTINUE = 101                          # continue processing
-    SWITCH_PROTOCOL = 102                   # switch protocol
-    PROCESSING = 103                        # tell the client that the server is processing the request, but no response is available yet
+    CONTINUE = 100                          # continue processing
+    SWITCH_PROTOCOL = 101                   # switch protocol
+    PROCESSING = 102                        # tell the client that the server is processing the request, but no response is available yet
     EARLY_HINTS = 103                       # allow to start the preloading of resources before the server has finished processing the request
 
     # Success

@@ -1,6 +1,8 @@
 import sqlite3
-from enum import Enum
+from enum import IntEnum
 import os
+from datetime import datetime
+import secrets
 
 from gamuLogger import Logger
 
@@ -8,12 +10,12 @@ from ..utils.version import Version
 
 Logger.set_module("database")
 
-class AccessLevel(Enum):
+class AccessLevel(IntEnum):
     USER = 0        # Global : Nothing              McServer : Can see server status
     ADMIN = 1       # Global : Nothing              McServer : Can start/stop servers, see logs, manage settings
     OPERATOR = 2    # Global : Can manage users     McServer : Can create and delete servers
 
-class ServerStatus(Enum):
+class ServerStatus(IntEnum):
     STOPPED = 0
     STARTING = 1
     RUNNING = 2
@@ -40,6 +42,34 @@ class McServer:
     def __repr__(self):
         return f"McServer(name={self.name}, mc_version={self.mc_version}, forge_version={self.forge_version}, status={self.status})"
 
+class AccessToken:
+    def __init__(self, username: str, token: str, expiration: datetime, remember: bool):
+        self.username = username
+        self.token = token
+        self.expiration = expiration
+        self.remember = remember
+        
+    def is_valid(self):
+        """
+        Check if the token is valid (not expired).
+        :return: True if the token is valid, False otherwise.
+        """
+        return self.expiration > datetime.now()
+
+    def __repr__(self):
+        return f"AccessToken(username={self.username}, token={self.token}, expiration={self.expiration})"
+    
+    @classmethod
+    def new(cls, username: str, expiration: datetime, remember: bool = False):
+        """
+        Create a new access token.
+        :param username: The username of the user.
+        :param expiration: The expiration time of the token.
+        :param remember: Whether to remember the token or not.
+        :return: The access token object.
+        """
+        token = secrets.token_urlsafe(64)
+        return cls(username, token, expiration, remember)
 
 class Database:
     def __init__(self, db_file):
@@ -80,6 +110,16 @@ class Database:
                 PRIMARY KEY (server_name, user_name)
             );
         ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS access_tokens (
+                username TEXT PRIMARY KEY,
+                token TEXT NOT NULL,
+                expiration INTEGER NOT NULL,
+                remember BOOLEAN NOT NULL DEFAULT 0,
+                FOREIGN KEY (username) REFERENCES users (username),
+                UNIQUE (token)
+            );
+        ''')
         self.connection.commit()
 
     def add_user(self, user : User):
@@ -87,7 +127,7 @@ class Database:
         Add a new user to the database.
         """
         self.cursor.execute('''
-            INSERT INTO users (username, password, access_level)
+            INSERT INTO users (username, password, global_access_level)
             VALUES (?, ?, ?)
         ''', (user.username, user.password, user.access_level.value))
         self.connection.commit()
@@ -104,15 +144,16 @@ class Database:
         :return: The user object.
         """
         self.cursor.execute('''
-            SELECT * FROM users WHERE username = ?
+            SELECT username, password, global_access_level FROM users WHERE username = ?
         ''', (username,))
         res = self.cursor.fetchone()
         if res is None:
             raise ValueError(f"User {username} not found")
+        Logger.trace(res)
         return User(
-            username=res[1],
-            password=res[2],
-            access_level=AccessLevel(res[3])
+            username=res[0],
+            password=res[1],
+            access_level=AccessLevel(res[2])
         )
 
     def has_user(self, username : str) -> bool:
@@ -277,3 +318,109 @@ class Database:
             VALUES (?, ?, ?)
         ''', (server_name, user_name, access_level.value))
         self.connection.commit()
+
+    def get_user_access(self, server_name : str, user_name : str) -> AccessLevel:
+        """
+        Get the access level of a user for a specific server.
+        :param server_name: The name of the server.
+        :param user_name: The username of the user.
+        :return: The access level of the user.
+        """
+        self.cursor.execute('''
+            SELECT * FROM server_users_access WHERE server_name = ? AND user_name = ?
+        ''', (server_name, user_name))
+        res = self.cursor.fetchone()
+        if res is None:
+            raise ValueError(f"Access level for user {user_name} on server {server_name} not found")
+        return AccessLevel(res[2])
+
+
+    def set_user_token(self, access_token : AccessToken):
+        """
+        Set the access token for a user.
+        :param username: The username of the user.
+        :param token: The access token.
+        :param expiration: The expiration time of the token.
+        """
+        self.cursor.execute('''
+            INSERT OR REPLACE INTO access_tokens (username, token, expiration, remember)
+            VALUES (?, ?, ?, ?)
+        ''', (access_token.username, access_token.token, int(access_token.expiration.timestamp()), "TRUE" if access_token.remember else "FALSE"))
+        self.connection.commit()
+        Logger.debug(f"Access token for user {access_token.username} set to \"{access_token.token}\"\nwith expiration {access_token.expiration.strftime('%Y-%m-%d %H:%M:%S')} {'(remembered)' if access_token.remember else ''}")
+        return self
+
+    def get_user_token(self, username : str) -> AccessToken:
+        """
+        Get the access token for a user.
+        :param username: The username of the user.
+        :return: The access token.
+        """
+        self.cursor.execute('''
+            SELECT * FROM access_tokens WHERE username = ?
+        ''', (username,))
+        res = self.cursor.fetchone()
+        if res is None:
+            raise ValueError(f"Access token for user {username} not found")
+        return AccessToken(
+            username=res[1],
+            token=res[2],
+            expiration=datetime.fromtimestamp(res[3]),
+            remember=res[4] == "TRUE"
+        )
+
+    def get_user_token_by_token(self, token : str) -> AccessToken:
+        """
+        Get the access token for a user by token.
+        :param token: The access token.
+        :return: The access token object.
+        """
+        self.cursor.execute('''
+            SELECT * FROM access_tokens WHERE token = ?
+        ''', (token,))
+        res = self.cursor.fetchone()
+        if res is None:
+            raise ValueError(f"Access token {token} not found")
+        return AccessToken(
+            username=res[0],
+            token=res[1],
+            expiration=datetime.fromtimestamp(res[2]),
+            remember=res[3] == "TRUE"
+        )
+
+    def get_user_from_token(self, token : str) -> User:
+        """
+        Get the user from an access token.
+        :param token: The access token.
+        :return: The user object.
+        """
+        self.cursor.execute('''
+            SELECT * FROM access_tokens WHERE token = ?
+        ''', (token,))
+        res = self.cursor.fetchone()
+        if res is None:
+            raise ValueError(f"Access token {token} not found")
+        return self.get_user(res[0])
+    
+    def exist_user_token(self, token : str) -> bool:
+        """
+        Check if an access token exists in the database.
+        :param token: The access token.
+        :return: True if the token exists, False otherwise.
+        """
+        self.cursor.execute('''
+            SELECT * FROM access_tokens WHERE token = ?
+        ''', (token,))
+        return self.cursor.fetchone() is not None
+
+    def delete_user_token(self, token : str):
+        """
+        Delete the access token for a user.
+        :param username: The username of the user.
+        """
+        self.cursor.execute('''
+            DELETE FROM access_tokens WHERE token = ?
+        ''', (token,))
+        self.connection.commit()
+        Logger.debug(f"Access token for user {token} deleted")
+        return self

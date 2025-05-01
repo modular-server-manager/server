@@ -1,0 +1,5 @@
+{
+    "app_data_path" : "tests/end_to_end/temp",
+    "forge_servers_path" : "${app_data_path}/servers",
+    "database_path" : "${app_data_path}/server.db"
+}
