@@ -208,14 +208,17 @@ class HttpServer(BaseServer):
                     Logger.trace("Missing parameters for login. got username: {}, password: {}, remember: {}".format(username, password, remember))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
 
-                password = hash_string(password)
 
                 if not self.database.has_user(username):
                     Logger.trace(f"User {username} does not exist")
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 user = self.database.get_user(username)
-                if user.password != password:
-                    Logger.trace(f"User {username} provided invalid password")
+                try:
+                    if not ph.verify(user.password, password):
+                        Logger.trace(f"User {username} provided invalid password")
+                        return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
+                except Exception as e:
+                    Logger.trace(f"Password verification failed for user {username}: {e}")
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
                 self.database.set_user_token(token)
