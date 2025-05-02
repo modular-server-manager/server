@@ -29,12 +29,12 @@ ARCHIVE = mc_srv_manager-$(VERSION).tar.gz
 
 PYPROJECT = pyproject.toml
 
-PYTHON_PATH = $(shell if [ -d env/bin ]; then echo "env/bin"; elif [ -d env/Scripts ]; then echo "env/Scripts"; else echo ""; fi)
-PYTHON = $(PYTHON_PATH)/python
+PYTHON_PATH = $(shell if [ -d env/bin ]; then echo "env/bin/"; elif [ -d env/Scripts ]; then echo "env/Scripts/"; else echo ""; fi)
+PYTHON = $(PYTHON_PATH)python
 
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
-EXECUTABLE = $(PYTHON_PATH)/mc-srv-manager$(EXECUTABLE_EXTENSION)
+EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
 
 mc_srv_manager/client/%.html: client/src/%.html
 	@mkdir -p $(@D)
