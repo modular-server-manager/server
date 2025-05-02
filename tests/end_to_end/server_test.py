@@ -3,10 +3,11 @@ import time
 import pytest
 import subprocess
 import os
+import sys
 
 BASE_URL = "http://localhost:5000"
 
-BASE_PATH = __file__[:__file__.rfind('/')]  # folder containing this file
+BASE_PATH = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")
 
 CONFIG_FILE = f"{BASE_PATH}/config.json"
 
@@ -27,11 +28,12 @@ class TestRegister:
     def setup_and_teardown(self, request : pytest.FixtureRequest):
         # Setup: Start the server
         name = request.node.name
+        
 
         if os.path.exists(f"{BASE_PATH}/temp/server.db"):
             os.remove(f"{BASE_PATH}/temp/server.db")
 
-        server_process = subprocess.Popen(["mc-srv-manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"])
+        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         
         time.sleep(1)  # Wait for the server to start
         yield
@@ -39,6 +41,8 @@ class TestRegister:
         # Teardown: Stop the server
         server_process.terminate()
         server_process.wait()
+        
+        time.sleep(1)  # Wait for the server to stop and release the database file
 
     def test_register_success(self):
         response = register("testuser", "testpassword")
@@ -87,7 +91,7 @@ class TestLogin:
         if os.path.exists(f"{BASE_PATH}/temp/server.db"):
             os.remove(f"{BASE_PATH}/temp/server.db")
 
-        server_process = subprocess.Popen(["mc-srv-manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"])
+        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         time.sleep(1)  # Wait for the server to start
         
         # create a test user
@@ -98,6 +102,8 @@ class TestLogin:
         # Teardown: Stop the server
         server_process.terminate()
         server_process.wait()
+        
+        time.sleep(1)  # Wait for the server to stop and release the database file
 
     def test_login_success(self):
         response = login("testuser", "testpassword")
@@ -137,7 +143,7 @@ class TestLogout:
         if os.path.exists(f"{BASE_PATH}/temp/server.db"):
             os.remove(f"{BASE_PATH}/temp/server.db")
 
-        server_process = subprocess.Popen(["mc-srv-manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"])
+        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         time.sleep(1)
         # Wait for the server to start
         # create a test user
@@ -147,6 +153,8 @@ class TestLogout:
         # Teardown: Stop the server
         server_process.terminate()
         server_process.wait()
+        
+        time.sleep(1)  # Wait for the server to stop and release the database file
         
     def test_logout_success(self):
         # First login to get the token

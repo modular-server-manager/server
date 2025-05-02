@@ -1,7 +1,11 @@
 
-.PHONY: all build clean install client server
+VERSION = 0.1.0
 
-all: dist/mc_srv_manager-0.1.0-py3-none-any.whl
+.PHONY: all build clean client server tests
+
+all: build
+
+TEMP_DIR = build
 
 WEB_SRC_TS = $(wildcard client/src/*.ts)
 WEB_SRC_HTML = $(wildcard client/src/*.html)
@@ -18,7 +22,19 @@ SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 CONFIG_SRC = $(wildcard server/src/config.json)
 CONFIG_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(CONFIG_SRC))
 
+TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
+
+WHEEL = mc_srv_manager-$(VERSION)-py3-none-any.whl
+ARCHIVE = mc_srv_manager-$(VERSION).tar.gz
+
 PYPROJECT = pyproject.toml
+
+PYTHON_PATH = $(shell if [ -d env/bin ]; then echo "env/bin"; elif [ -d env/Scripts ]; then echo "env/Scripts"; else echo ""; fi)
+PYTHON = $(PYTHON_PATH)/python
+
+EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
+
+EXECUTABLE = $(PYTHON_PATH)/mc-srv-manager$(EXECUTABLE_EXTENSION)
 
 mc_srv_manager/client/%.html: client/src/%.html
 	@mkdir -p $(@D)
@@ -46,16 +62,30 @@ mc_srv_manager/%.json: server/src/%.json
 	@cp $< $@
 
 
-dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
-	python3 -m build --outdir dist
+dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
+	mkdir -p $(TEMP_DIR)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION)
+	mkdir -p dist
+	mv $(TEMP_DIR)/*.whl dist/
+	rm -rf $(TEMP_DIR)
 	@echo "Building wheel package complete."
 
-install : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
+dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
+	mkdir -p $(TEMP_DIR)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION)
+	mkdir -p dist
+	mv $(TEMP_DIR)/*.tar.gz dist/
+	rm -rf $(TEMP_DIR)
+	@echo "Building archive package complete."
+
+
+$(EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
 	@echo "Installing package..."
-	@pip install .
+	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
-build: dist/mc_srv_manager-0.1.0-py3-none-any.whl
+build: dist/$(WHEEL) dist/$(ARCHIVE)
+	@echo "Build complete."
 
 clean:
 	rm -rf mc_srv_manager
@@ -66,3 +96,9 @@ client: $(WEB_DIST)
 
 server: $(SRV_DIST) $(CONFIG_DIST)
 	@echo "Server build complete."
+
+test-report.xml: $(EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+	$(PYTHON) -m pytest --junitxml=test-report.xml tests
+
+
+tests: test-report.xml
