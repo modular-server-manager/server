@@ -37,6 +37,18 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    
+    - name: setup nodejs
+      if: steps.check_branch.outputs.match == 'true'
+      uses: actions/setup-node@v5
+      with:
+        node-version: '18'
+        cache: 'npm'
+      
+    - name: install dev dependencies
+      if: steps.check_branch.outputs.match == 'true'
+      run: |
+        npm install --prefer-offline --no-audit --progress=false
 
     - name: build
       if: steps.check_branch.outputs.match == 'true'
