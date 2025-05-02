@@ -38,13 +38,19 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
+    - name: install python dependencies
+      if: steps.check_branch.outputs.match == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install build pytest
+
     - name: setup nodejs
       if: steps.check_branch.outputs.match == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: '18'
     
-    - name: install dependencies
+    - name: install nodejs dependencies
       if: steps.check_branch.outputs.match == 'true'
       run: npm install --global sass typescript
 
