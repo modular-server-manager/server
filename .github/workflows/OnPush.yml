@@ -46,7 +46,7 @@ jobs:
     
     - name: install dependencies
       if: steps.check_branch.outputs.match == 'true'
-      run: cd client && npm ci
+      run: npm install --global sass typescript
 
     - name: build
       if: steps.check_branch.outputs.match == 'true'
