@@ -40,15 +40,11 @@ jobs:
     
     - name: setup nodejs
       if: steps.check_branch.outputs.match == 'true'
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
-      
-    - name: install dev dependencies
-      if: steps.check_branch.outputs.match == 'true'
-      run: |
-        npm install --prefer-offline --no-audit --progress=false
+      run: npm ci
 
     - name: build
       if: steps.check_branch.outputs.match == 'true'
