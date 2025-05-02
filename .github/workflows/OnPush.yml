@@ -44,6 +44,9 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+    
+    - name: install dependencies
+      if: steps.check_branch.outputs.match == 'true'
       run: npm ci
 
     - name: build
