@@ -46,6 +46,7 @@ jobs:
     
     - name: install dependencies
       if: steps.check_branch.outputs.match == 'true'
+      run: cd client
       run: npm ci
 
     - name: build
