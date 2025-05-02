@@ -2,9 +2,7 @@
 VERSION = 0.1.0
 
 # if version is in the form of x.y.z-dev-aaaa, set it to x.y.z-dev
-ifeq ($(VERSION),$(filter $(VERSION),$(shell echo $(VERSION) | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-dev-[a-z0-9]+$$')))
-	VERSION := $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*/-dev/')
-endif
+VERSION := $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*/-dev/')
 
 .PHONY: all build clean client server tests
 
