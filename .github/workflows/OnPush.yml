@@ -43,7 +43,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
     
     - name: install dependencies
       if: steps.check_branch.outputs.match == 'true'
