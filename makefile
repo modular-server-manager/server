@@ -1,8 +1,9 @@
 
-VERSION = 0.1.0
+# if not defined, set the version to 0.1.0
+VERSION ?= 0.1.0
 
 # if version is in the form of x.y.z-dev-aaaa, set it to x.y.z-dev
-VERSION := $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*/-dev/')
+VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*/-dev/')
 
 .PHONY: all build clean client server tests
 
@@ -27,8 +28,8 @@ CONFIG_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(CONFIG_SRC))
 
 TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 
-WHEEL = mc_srv_manager-$(VERSION)-py3-none-any.whl
-ARCHIVE = mc_srv_manager-$(VERSION).tar.gz
+WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
+ARCHIVE = mc_srv_manager-$(VERSION_STR).tar.gz
 
 PYPROJECT = pyproject.toml
 
@@ -67,7 +68,7 @@ mc_srv_manager/%.json: server/src/%.json
 
 dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
 	mkdir -p $(TEMP_DIR)
-	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION_STR)
 	mkdir -p dist
 	mv $(TEMP_DIR)/*.whl dist/
 	rm -rf $(TEMP_DIR)
@@ -75,7 +76,7 @@ dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
 
 dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
 	mkdir -p $(TEMP_DIR)
-	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION_STR)
 	mkdir -p dist
 	mv $(TEMP_DIR)/*.tar.gz dist/
 	rm -rf $(TEMP_DIR)
