@@ -64,3 +64,10 @@ jobs:
       with:
         report_paths: 'test-report.xml'
         include_passed: true
+
+    - name: upload tests server logs
+      if: steps.check_branch.outputs.match == 'true' && (success() || failure())
+      uses: actions/upload-artifact@v4
+      with:
+        name: tests-server-logs
+        path: tests/end-to-end/temp/
