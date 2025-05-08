@@ -82,6 +82,22 @@ class Database:
             raise e
         self.cursor = self.connection.cursor()
         self.create_table()
+        
+    def close(self):
+        """
+        Close the database connection.
+        """
+        if self.connection:
+            self.connection.close()
+            Logger.debug("Database connection closed")
+        else:
+            Logger.debug("No database connection to close")
+        
+    def __del__(self):
+        """
+        Destructor to close the database connection when the object is deleted.
+        """
+        self.close()
 
     def create_table(self):
         self.cursor.execute('''
