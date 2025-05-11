@@ -1,22 +1,26 @@
-from flask import Flask, request
-import pathlib
 import os
-from gamuLogger import Logger
-from http_code import HttpCode as HTTP
-
-from mimetypes import guess_type
+import pathlib
 import traceback
 from datetime import timedelta
+from mimetypes import guess_type
 
-from ..forge.web_interface import WebInterface
+from argon2 import PasswordHasher
+from flask import Flask, request
+from gamuLogger import Logger
+from http_code import HttpCode as HTTP
 from version import Version
+
+from ..forge import installer
+from ..forge.web_interface import WebInterface
 from ..utils.hash import hash_string
 from ..utils.misc import str2bool, time_from_now
-from ..forge import installer
-from .database import McServer, ServerStatus, AccessLevel, User, AccessToken
-from .base_server import BaseServer, STATIC_PATH
+from .base_server import STATIC_PATH, BaseServer
+from .database import AccessLevel, AccessToken, McServer, ServerStatus, User
 
 Logger.set_module("http_server")
+
+
+ph = PasswordHasher()
 
 
 
@@ -33,7 +37,7 @@ class HttpServer(BaseServer):
     def _get_app(self):
         """
         Get the Flask app instance.
-        
+
         :return: The Flask app instance.
         """
         return self.__app
@@ -41,7 +45,7 @@ class HttpServer(BaseServer):
     def request_auth(self, access_level: AccessLevel):
         """
         Decorator to check if the user has the required access level.
-        
+
         :param access_level: Required access level.
         """
         def decorator(f):
@@ -192,21 +196,21 @@ class HttpServer(BaseServer):
                 server_name = data.get("name")
                 mc_version = data.get("mc_version")
                 forge_version = data.get("forge_version")
-                
+
                 if not server_name or not mc_version or not forge_version:
                     Logger.trace("Missing parameters for create_server. got name: {}, path: {}, mc_version: {}, forge_version: {}".format(server_name, server_path, mc_version, forge_version))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                
+
                 mc_version = Version.from_string(mc_version)
                 forge_version = Version.from_string(forge_version)
-                
+
                 servers = self.config.get("servers", default={}, set=True)
                 if server_name in servers:
                     Logger.trace(f"Server {server_name} already exists")
                     return {"message": "Server Already Exists"}, HTTP.CONFLICT
                 servers_path = self.config.get("forge_servers_path")
                 server_path = os.path.join(servers_path, server_name)
-                
+
                 url = WebInterface.get_forge_installer_url(mc_version, forge_version)
                 installer.install(url, server_path)
                 srv = McServer(
@@ -243,14 +247,17 @@ class HttpServer(BaseServer):
                     Logger.trace("Missing parameters for login. got username: {}, password: {}, remember: {}".format(username, password, remember))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
 
-                password = hash_string(password)
 
                 if not self.database.has_user(username):
                     Logger.trace(f"User {username} does not exist")
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 user = self.database.get_user(username)
-                if user.password != password:
-                    Logger.trace(f"User {username} provided invalid password")
+                try:
+                    if not ph.verify(user.password, password):
+                        Logger.trace(f"User {username} provided invalid password")
+                        return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
+                except argon2.exceptions.VerifyMismatchError as e:
+                    Logger.trace(f"Password verification failed for user {username}: {e}")
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
                 self.database.set_user_token(token)
@@ -260,7 +267,7 @@ class HttpServer(BaseServer):
                 Logger.error(f"Error processing login request: {e}")
                 Logger.trace(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
-        
+
         @self.__app.route('/api/register', methods=['POST'])
         def register():
             Logger.debug(f"API request for path: {request.path}")
@@ -273,13 +280,13 @@ class HttpServer(BaseServer):
                 if not username or not password:
                     Logger.debug("Missing parameters for register. got username: {}, password: {}, remember: {}".format(username, password, remember))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                
+
                 password = hash_string(password)
-                
+
                 if self.database.has_user(username):
                     Logger.debug(f"User {username} already exists")
                     return {"message": "User already exists"}, HTTP.CONFLICT
-                
+
                 self.database.add_user(User(
                     username=username,
                     password=password,
@@ -314,17 +321,17 @@ class HttpServer(BaseServer):
                 token = request.headers.get('Authorization')
                 if not token:
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                
+
                 access_token = self.database.get_user_token_by_token(token)
                 if not access_token or not access_token.is_valid():
                     return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
-                
+
                 user = self.database.get_user(access_token.username)
                 return {
                     "username": user.username,
                     "access_level": user.access_level.name
                 }, HTTP.OK
-                
+
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.trace(f"Error details: {traceback.format_exc()}")
