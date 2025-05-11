@@ -217,7 +217,7 @@ class HttpServer(BaseServer):
                     if not ph.verify(user.password, password):
                         Logger.trace(f"User {username} provided invalid password")
                         return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
-                except Exception as e:
+                except argon2.exceptions.VerifyMismatchError as e:
                     Logger.trace(f"Password verification failed for user {username}: {e}")
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
