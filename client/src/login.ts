@@ -1,0 +1,94 @@
+import Cookies from './cookie.js';
+import API from './api.js';
+
+// Check if the user is already logged in
+const token = Cookies.get('token');
+if (token) {
+    // Redirect to the dashboard if the user is already logged in
+    window.location.href = '/app/dashboard';
+}
+
+const loginTab = document.getElementById('login-tab') as HTMLButtonElement;
+const registerTab = document.getElementById('register-tab') as HTMLButtonElement;
+const authForm = document.getElementById('auth-form') as HTMLFormElement;
+const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+const authMessage = document.getElementById('auth-message') as HTMLDivElement;
+const confirmPasswordGroup = document.getElementById('confirm-password-group') as HTMLDivElement;
+const confirmPasswordInput = document.getElementById('confirm-password') as HTMLInputElement;
+
+
+
+let mode: 'login' | 'register' = 'login';
+
+function setMode(newMode: 'login' | 'register') {
+    mode = newMode;
+    if (mode === 'login') {
+        loginTab.classList.add('active');
+        registerTab.classList.remove('active');
+        submitBtn.textContent = 'Login';
+        confirmPasswordGroup.style.display = 'none';
+    } else {
+        loginTab.classList.remove('active');
+        registerTab.classList.add('active');
+        submitBtn.textContent = 'Register';
+        confirmPasswordGroup.style.display = 'flex';
+    }
+    authMessage.textContent = '';
+}
+
+loginTab.addEventListener('click', () => setMode('login'));
+registerTab.addEventListener('click', () => setMode('register'));
+
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authMessage.textContent = '';
+    const username = (document.getElementById('username') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement).value;
+    const confirmPassword = confirmPasswordInput.value;
+
+    if (mode === 'register') {
+        if (!confirmPassword) {
+            authMessage.style.color = 'red';
+            authMessage.textContent = 'Please confirm your password.';
+            return;
+        }
+        if (password !== confirmPassword) {
+            authMessage.style.color = 'red';
+            authMessage.textContent = 'Passwords do not match.';
+            return;
+        }
+    }
+
+    const endpoint = mode === 'login' ? '/api/login' : '/api/register';
+
+    try {
+        // const response = await fetch(endpoint, {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ username, password }),
+        // });
+        // const data = await response.json();
+        const {data, status} = await API.post(endpoint, { username, password });
+
+        if (status === 200) {
+            let {token} = data;
+            Cookies.set('token', token, 1); // set cookie for 1 hour
+
+            authMessage.style.color = 'green';
+            authMessage.textContent = mode === 'login'
+                ? 'Login successful! Redirecting...'
+                : 'Registration successful! You can now log in.';
+            if (mode === 'login') {
+                setTimeout(() => {
+                    window.location.href = '/app/dashboard';
+                }, 1000);
+            }
+        } else {
+            authMessage.style.color = 'red';
+            authMessage.textContent = data.message || 'An error occurred.';
+        }
+    } catch (err) {
+        authMessage.style.color = 'red';
+        authMessage.textContent = 'Network error.';
+    }
+});

@@ -7,13 +7,13 @@ from mimetypes import guess_type
 from argon2 import PasswordHasher
 from flask import Flask, request
 from gamuLogger import Logger
+from http_code import HttpCode as HTTP
+from version import Version
 
 from ..forge import installer
 from ..forge.web_interface import WebInterface
 from ..utils.hash import hash_string
-from ..utils.http_code import HttpCode as HTTP
 from ..utils.misc import str2bool, time_from_now
-from ..utils.version import Version
 from .base_server import STATIC_PATH, BaseServer
 from .database import AccessLevel, AccessToken, McServer, ServerStatus, User
 
@@ -49,58 +49,87 @@ class HttpServer(BaseServer):
         :param access_level: Required access level.
         """
         def decorator(f):
+            Logger.set_module("middleware")
             def wrapper(*args, **kwargs):
+                Logger.info(f"Request from {request.remote_addr} with method {request.method} for path {request.path}")
                 try:
-                    token = request.headers.get('Authorization')
-                    if not token:
+                    if 'Authorization' not in request.headers:
+                        Logger.info("Missing Authorization header")
                         return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                    if not self.database.exist_user_token(token):
+                    token = request.headers.get('Authorization')
+                    if not token.startswith("Bearer "):
+                        Logger.info("Invalid Authorization header format")
+                        return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
+                    token = token[7:]
+                    if not token or not self.database.exist_user_token(token):
+                        Logger.info("Invalid token")
                         return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
 
                     access_token = self.database.get_user_token_by_token(token)
                     if not access_token or not access_token.is_valid():
+                        Logger.info("Invalid token")
                         return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
 
                     user = self.database.get_user(access_token.username)
                     if user.access_level < access_level:
+                        Logger.info(f"User {user.username} does not have the required access level")
                         return {"message": "Forbidden"}, HTTP.FORBIDDEN
                 except Exception as e:
                     Logger.error(f"Error processing request: {e}")
-                    Logger.trace(f"Error details: {traceback.format_exc()}")
+                    Logger.debug(f"Error details: {traceback.format_exc()}")
                     return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
                 else:
-                    return f(*args, **kwargs)
+                    Logger.info(f"User {user.username} has the required access level")
+                    return f(*args, **kwargs, token=token) # pass the token to the function
+
             wrapper.__name__ = f.__name__
             return wrapper
+
         return decorator
 
     def __config_static_route(self):
+        self.__app.static_folder = STATIC_PATH
+
         @self.__app.route('/')
         def index():
+            # redirect to the app index
+            Logger.trace("asking for index, redirecting to /app/")
+            return "/redirecting to /app/", HTTP.PERMANENT_REDIRECT, {'Location': '/app/'}
+
+        @self.__app.route('/app/')
+        def app_index():
+            Logger.trace("asking for index.html, redirecting to /app/index.html")
             return static_proxy('index.html')
 
-        @self.__app.route('/<path:path>')
+        @self.__app.route('/app/<path:path>')
         def static_proxy(path):
             try:
                 # send the file to the browser
                 Logger.trace(f"requesting {STATIC_PATH}/{path}")
                 if not os.path.exists(f"{STATIC_PATH}/{path}"):
-                    Logger.trace(f"File not found: {STATIC_PATH}/{path}")
-                    return "File not found", HTTP.NOT_FOUND
-                content = pathlib.Path(f"{STATIC_PATH}/{path}").read_text()
+                    if os.path.exists(f"{STATIC_PATH}/{path}.html"):
+                        path = f"{path}.html"
+                    else:
+                        Logger.trace(f"File not found: {STATIC_PATH}/{path}")
+                        return "File not found", HTTP.NOT_FOUND
+                content = pathlib.Path(f"{STATIC_PATH}/{path}").read_bytes()
                 mimetype = guess_type(path)[0]
-                Logger.trace(f"Serving {STATIC_PATH}{path} ({len(content)} bytes) with mimetype {mimetype})")
+                Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
             except Exception as e:
                 Logger.error(f"Error serving file {path}: {e}")
                 return "Internal Server Error", HTTP.INTERNAL_SERVER_ERROR
 
 
-
-
     def __config_api_route(self):
 
+###################################################################################################
+# SERVER RELATED ENDPOINTS
+# region: server
+###################################################################################################
+
         @self.__app.route('/api/mc_versions', methods=['GET'])
+        @self.request_auth(AccessLevel.USER)
         def list_mc_versions():
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -112,6 +141,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET'])
+        @self.request_auth(AccessLevel.USER)
         def list_forge_versions(mc_version: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -131,6 +161,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/servers', methods=['GET'])
+        @self.request_auth(AccessLevel.USER)
         def list_servers():
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -142,6 +173,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/server/<path:server_name>', methods=['GET'])
+        @self.request_auth(AccessLevel.USER)
         def get_server_info(server_name: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -197,7 +229,9 @@ class HttpServer(BaseServer):
 
 
 ###################################################################################################
-# LOGIN / REGISTER / LOGOUT
+# endregion: server
+# USER RELATED ENDPOINTS
+# region: user
 ###################################################################################################
 
 
@@ -236,20 +270,21 @@ class HttpServer(BaseServer):
 
         @self.__app.route('/api/register', methods=['POST'])
         def register():
-            Logger.trace(f"API request for path: {request.path}")
+            Logger.debug(f"API request for path: {request.path}")
+            Logger.trace(request.get_json())
             try:
                 data = request.get_json()
                 username = data.get('username')
                 password = data.get('password')
                 remember = str2bool(data.get('remember', 'false'))
                 if not username or not password:
-                    Logger.trace("Missing parameters for register. got username: {}, password: {}, remember: {}".format(username, password, remember))
+                    Logger.debug("Missing parameters for register. got username: {}, password: {}, remember: {}".format(username, password, remember))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
 
                 password = hash_string(password)
 
                 if self.database.has_user(username):
-                    Logger.trace(f"User {username} already exists")
+                    Logger.debug(f"User {username} already exists")
                     return {"message": "User already exists"}, HTTP.CONFLICT
 
                 self.database.add_user(User(
@@ -259,21 +294,18 @@ class HttpServer(BaseServer):
                 ))
                 token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
                 self.database.set_user_token(token)
-                Logger.trace(f"User {username} registered with token {token.token}")
+                Logger.debug(f"User {username} registered with token {token.token}")
                 return { "token": token.token }, HTTP.CREATED
             except Exception as e:
                 Logger.error(f"Error processing register request: {e}")
-                Logger.trace(f"Error details: {traceback.format_exc()}")
+                Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/logout', methods=['POST'])
         @self.request_auth(AccessLevel.USER)
-        def logout():
+        def logout(token: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
-                token = request.headers.get('Authorization')
-                if not token:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
                 self.database.delete_user_token(token)
                 return {"message": "Logged out"}, HTTP.OK
             except Exception as e:
@@ -304,3 +336,8 @@ class HttpServer(BaseServer):
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.trace(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
+
+
+###################################################################################################
+# endregion: user
+###################################################################################################

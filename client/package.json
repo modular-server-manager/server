@@ -2,15 +2,12 @@
   "name": "frontend-project",
   "version": "1.0.0",
   "scripts": {
-    "build:ts": "tsc",
-    "build:scss": "sass src/style.scss dist/style.css",
-    "build:html": "cp src/*.html dist/",
-    "build": "npm run build:ts && npm run build:scss && npm run build:html",
-    "start": "npm run build && npx serve dist"
+    "start": "npx serve dist"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "@types/node": "^22.15.17",
     "sass": "^1.70.0",
-    "serve": "^14.0.0"
+    "serve": "^14.0.0",
+    "typescript": "^5.0.0"
   }
 }

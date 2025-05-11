@@ -3,11 +3,12 @@ from bs4 import BeautifulSoup
 import re
 import json
 from typing import Any
-from datetime import datetime
-from gamuLogger import Logger, Levels
+from datetime import datetime, timedelta
 
-from ..utils.cache import Cache, timedelta
-from ..utils.version import Version
+from gamuLogger import Logger
+from cache import Cache
+
+from version import Version
 
 Logger.set_module("forge_reader")
 

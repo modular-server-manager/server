@@ -1,0 +1,31 @@
+@use './common.scss';
+
+// === Dashboard Header ===
+.dashboard-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 16px;
+  color: common.$mc-font-color;
+}
+
+.dashboard-header button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: common.$mc-font;
+  font-size: 1rem;
+  margin-right: 0;
+}
+
+.dashboard-header button:first-child {
+  margin-right: 12px;
+  background: #444;
+  color: common.$mc-font-color;
+}
+
+.dashboard-header button:last-child {
+  background: #e74c3c;
+  color: common.$mc-font-color;
+}

@@ -1,0 +1,47 @@
+// === Minecraft Style Constants ===
+$mc-button-bg-active: #727272;
+$mc-button-bg-inactive: #2b2b2b;
+$mc-button-border: #000;
+$mc-button-border-hover: #fff;
+$mc-font-color: #fff;
+
+$mc-font: 'Press Start 2P', 'VT323', 'Consolas', 'monospace';
+
+// === Import Minecraft Font (Google Fonts) ===
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+// === Base Styles ===
+body {
+  background: linear-gradient(rgba(23,26,33,0.85), rgba(23,26,33,0.85)), url('assets/background.png') repeat;
+  font-family: $mc-font;
+  color: $mc-font-color;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input {
+  background: $mc-button-bg-active;
+  color: $mc-font-color;
+  border: 2px solid $mc-button-border;
+  border-radius: 0;
+  font-family: $mc-font;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $mc-button-border-hover;
+  }
+
+  &:active,
+  &.active {
+    background: $mc-button-bg-active;
+    border-color: $mc-button-border-hover;
+    border-width: 3px;
+  }
+  &:disabled {
+    background: $mc-button-bg-inactive;
+    cursor: not-allowed;
+  }
+}

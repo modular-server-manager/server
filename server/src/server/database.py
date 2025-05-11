@@ -6,14 +6,14 @@ import secrets
 
 from gamuLogger import Logger
 
-from ..utils.version import Version
+from version import Version
 
 Logger.set_module("database")
 
 class AccessLevel(IntEnum):
-    USER = 0        # Global : Nothing              McServer : Can see server status
-    ADMIN = 1       # Global : Nothing              McServer : Can start/stop servers, see logs, manage settings
-    OPERATOR = 2    # Global : Can manage users     McServer : Can create and delete servers
+    USER = 0        # Global : Can see servers status       McServer : Nothing
+    ADMIN = 1       # Global : Nothing                      McServer : Can start/stop servers, see logs, manage settings
+    OPERATOR = 2    # Global : Can manage users             McServer : Can create and delete servers
 
 class ServerStatus(IntEnum):
     STOPPED = 0
@@ -73,6 +73,7 @@ class AccessToken:
 
 class Database:
     def __init__(self, db_file):
+        Logger.debug(f"Connecting to database {db_file}")
         os.makedirs(os.path.dirname(db_file), exist_ok=True)
         try:
             self.connection = sqlite3.connect(db_file)
@@ -82,6 +83,23 @@ class Database:
             raise e
         self.cursor = self.connection.cursor()
         self.create_table()
+        Logger.info(f"Database connected to {db_file}")
+        
+    def close(self):
+        """
+        Close the database connection.
+        """
+        if self.connection:
+            self.connection.close()
+            Logger.debug("Database connection closed")
+        else:
+            Logger.debug("No database connection to close")
+        
+    def __del__(self):
+        """
+        Destructor to close the database connection when the object is deleted.
+        """
+        self.close()
 
     def create_table(self):
         self.cursor.execute('''
@@ -422,5 +440,5 @@ class Database:
             DELETE FROM access_tokens WHERE token = ?
         ''', (token,))
         self.connection.commit()
-        Logger.debug(f"Access token for user {token} deleted")
+        Logger.debug(f"Access token {token} deleted")
         return self
