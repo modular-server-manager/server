@@ -19,7 +19,14 @@ class Server(HttpServer, WebSocketServer):
     
     def start(self):
         Logger.info(f"Starting HTTP server on port {self._port}")
-        app = socketio.WSGIApp(self._get_sio(), self._get_app())
-        wsgi.server(eventlet.listen(('', self._port)), app, log_output=False)
-        sys.stdout.write("\r")
-        Logger.info("HTTP server stopped")
+        try:
+            app = socketio.WSGIApp(self._get_sio(), self._get_app())
+            wsgi.server(eventlet.listen(('', self._port)), app, log_output=False)
+        except KeyboardInterrupt:
+            sys.stdout.write("\r")
+            sys.stdout.flush()
+        except Exception as e:
+            Logger.fatal(f"Server encountered an error: {e}")
+            sys.exit(1)
+        finally:
+            Logger.info("HTTP server stopped")

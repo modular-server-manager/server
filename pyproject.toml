@@ -3,7 +3,7 @@ name = "mc-srv-manager"
 version = "0.1.0"
 description = "Minecraft Server Manager"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Antoine BUIREY", email = "antoine.buirey@gmail.com" }
 ]
 requires-python = ">=3.8"
 dependencies = [
@@ -28,6 +28,10 @@ dependencies = [
     "eventlet==0.39.1",
     "greenlet==3.2.1",
     "python-socketio==5.13.0",
+    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.0.2/cache-1.0.2-py3-none-any.whl",
+    "config @ https://github.com/T0ine34/python-sample/releases/download/1.0.2/config-1.0.2-py3-none-any.whl",
+    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.0.2/http_code-1.0.2-py3-none-any.whl",
+    "version @ https://github.com/T0ine34/python-sample/releases/download/1.0.2/version-1.0.2-py3-none-any.whl"
 ]
 
 [project.scripts]

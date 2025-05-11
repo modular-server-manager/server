@@ -4,6 +4,7 @@ import pytest
 import subprocess
 import os
 import sys
+import json
 
 BASE_URL = "http://localhost:5000"
 
@@ -28,25 +29,44 @@ class TestRegister:
     def setup_and_teardown(self, request : pytest.FixtureRequest):
         # Setup: Start the server
         name = request.node.name
-        
 
-        if os.path.exists(f"{BASE_PATH}/temp/server.db"):
-            os.remove(f"{BASE_PATH}/temp/server.db")
+        db_file = f"{BASE_PATH}/temp/server.{name}.db"
 
-        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
+        # Remove the database file if it exists
+        if os.path.exists(db_file):
+            os.remove(db_file)
+
+        config_file = f"{BASE_PATH}/temp/config.{name}.json"
+        config = {
+            "app_data_path" : f"{BASE_PATH}/temp",
+            "forge_servers_path" : "${app_data_path}/servers",
+            "database_path" : "${app_data_path}/server."+f"{name}.db",
+        }
+        with open(config_file, "w") as f:
+            f.write(json.dumps(config, indent=4))
+
+
+        server_process = subprocess.Popen(
+            [sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", config_file, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"],
+            stdout=sys.stdout,
+            stderr=sys.stdout,
+        )
+
+        time.sleep(2)  # Wait for the server to start
+
+        server_process = subprocess.Popen(["mc-srv-manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"])
         
         time.sleep(1)  # Wait for the server to start
         yield
-        
-        # Teardown: Stop the server
+
         server_process.terminate()
         server_process.wait()
-        
+
         time.sleep(1)  # Wait for the server to stop and release the database file
 
-    def test_register_success(self):
+    def test_register_success(self):  # sourcery skip: class-extract-method
         response = register("testuser", "testpassword")
-        assert response.status_code == 201 # Created
+        assert response.status_code == 201, response.text
         assert "token" in response.json()
         assert response.json()["token"] is not None
         assert response.json()["token"] != ""
@@ -61,24 +81,18 @@ class TestRegister:
         response = register(username, password)
         assert response.status_code == 400
         assert response.json() == response_json
-        
-    @pytest.mark.parametrize(
-        "username, password, response_json", [
-        ("testuser", "testpassword", {"message": "User already exists"}),
-        ("testuser", "testpassword", {"message": "User already exists"}),
-        ("testuser", "testpassword", {"message": "User already exists"}),
-    ], ids=["duplicate_username_1", "duplicate_username_2", "duplicate_username_3"])
-    def test_register_duplicate_user(self, username, password, response_json):
+
+    def test_register_duplicate_user(self):
         # First register the user
-        response = register(username, password)
+        response = register("testuser", "testpassword")
         assert response.status_code == 201
         assert "token" in response.json()
         assert response.json()["token"] is not None
         assert response.json()["token"] != ""
         # Now try to register the same user again
-        response = register(username, password)
+        response = register("testuser", "testpassword")
         assert response.status_code == 409  # Conflict
-        assert response.json() == response_json
+        assert response.json() == {"message": "User already exists"}
 
 
 

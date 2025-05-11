@@ -1,7 +1,6 @@
 from .server.server import Server
 import argparse
 from gamuLogger import config_argparse, config_logger
-import os
 
 BASE_PATH = __file__[:__file__.rfind('/')]  # get the base path of the server
 
