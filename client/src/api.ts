@@ -7,7 +7,7 @@ export default class API {
      * @param params the parameters to include in the request
      * @returns Promise<any>
      */
-    static async get(url: string, params: any) {
+    private static async get(url: string, params: any) {
         let token = Cookies.get('token');
         if (!token) {
             console.error('No token found in cookies');
@@ -32,7 +32,7 @@ export default class API {
      * @param body the body to include in the request
      * @returns Promise<any>
      */
-    static async post(url: string, body: any) {
+    private static async post(url: string, body: any) {
         const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -54,7 +54,7 @@ export default class API {
      * @param body the body to include in the request
      * @returns Promise<any>
      */
-    static async get_noauth(url: string, params: any) {
+    private static async get_noauth(url: string, params: any) {
         const response = await fetch(url + '?' + new URLSearchParams(params), {
             method: 'GET',
             headers: {
@@ -74,7 +74,7 @@ export default class API {
      * @param body the body to include in the request
      * @returns Promise<any>
      */
-    static async post_noauth(url: string, body: any) {
+    private static async post_noauth(url: string, body: any) {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -85,6 +85,48 @@ export default class API {
         return {
             data: await response.json(),
             status: response.status,
+        }
+    }
+
+    public static async register(username: string, password: string, remember: boolean) {
+        const {data, status} = await API.post_noauth('/api/register', { username, password, remember });
+        if (status === 201) {
+            let {token} = data;
+            Cookies.set('token', token, 1); // set cookie for 1 hour
+            return true;
+        }
+        else{
+            console.error('Error registering user:', data);
+            return false;
+        }
+    }
+
+    public static async login(username: string, password: string, remember: boolean) {
+        const {data, status} = await API.post_noauth('/api/login', { username, password, remember });
+        if (status === 200) {
+            let {token} = data;
+            Cookies.set('token', token, 1); // set cookie for 1 hour
+            return true;
+        }
+        else{
+            console.error('Error logging in user:', data);
+            return false;
+        }
+    }
+
+    public static async logout() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post('/api/logout', {});
+        Cookies.erase('token');
+        if (status === 200) {
+            return true;
+        }
+        else{
+            console.error('Error logging out user:', data['message']);
+            return false;
         }
     }
 }

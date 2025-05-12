@@ -1,5 +1,6 @@
 import datetime as dt
 
+
 def str2bool(v : str) -> bool:
     """
     Convert a string to a boolean value.
@@ -17,3 +18,7 @@ def time_from_now(delta : dt.timedelta) -> dt.datetime:
     return a datetime object from a string corresponding to a time from now
     """
     return dt.datetime.now() + delta
+
+class NoLog:
+    def write(self, *_): pass
+    def flush(self): pass

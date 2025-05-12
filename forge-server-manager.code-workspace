@@ -1,9 +1,11 @@
 {
 	"folders": [
 		{
+			"name": "forge-server-manager",
 			"path": "."
 		},
 		{
+			"name": "minecraft",
 			"path": "/var/minecraft"
 		}
 	],

@@ -1,10 +1,11 @@
-import requests
-import time
-import pytest
-import subprocess
-import os
-import sys
 import json
+import os
+import subprocess
+import sys
+import time
+
+import pytest
+import requests
 
 BASE_URL = "http://localhost:5000"
 
@@ -18,7 +19,7 @@ def login(username, password):
 
 def register(username, password):
     return requests.post(f"{BASE_URL}/api/register", json={"username": username, "password": password})
-    
+
 def logout(token):
     return requests.post(f"{BASE_URL}/api/logout", headers={"Authorization": f"{token}"})
 
@@ -49,14 +50,11 @@ class TestRegister:
         server_process = subprocess.Popen(
             [sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", config_file, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"],
             stdout=sys.stdout,
-            stderr=sys.stdout,
+            stderr=sys.stdout
         )
 
         time.sleep(2)  # Wait for the server to start
 
-        server_process = subprocess.Popen(["mc-srv-manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"])
-        
-        time.sleep(1)  # Wait for the server to start
         yield
 
         server_process.terminate()
@@ -70,7 +68,7 @@ class TestRegister:
         assert "token" in response.json()
         assert response.json()["token"] is not None
         assert response.json()["token"] != ""
-        
+
     @pytest.mark.parametrize(
         "username, password, response_json", [
         ("", "testpassword", {"message": "Missing parameters"}),
@@ -107,7 +105,7 @@ class TestLogin:
 
         server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         time.sleep(1)  # Wait for the server to start
-        
+
         # create a test user
         register("testuser", "testpassword")
 
@@ -116,7 +114,7 @@ class TestLogin:
         # Teardown: Stop the server
         server_process.terminate()
         server_process.wait()
-        
+
         time.sleep(1)  # Wait for the server to stop and release the database file
 
     def test_login_success(self):
@@ -163,24 +161,24 @@ class TestLogout:
         # create a test user
         register("testuser", "testpassword")
         yield
-        
+
         # Teardown: Stop the server
         server_process.terminate()
         server_process.wait()
-        
+
         time.sleep(1)  # Wait for the server to stop and release the database file
-        
+
     def test_logout_success(self):
         # First login to get the token
         response = login("testuser", "testpassword")
         assert response.status_code == 200
         token = response.json()["token"]
-        
+
         # Now logout
         response = logout(token)
         assert response.status_code == 200
         assert response.json() == {"message": "Logged out"}
-        
+
     @pytest.mark.parametrize(
         "token, response_code, response_json", [
         ("", 400, {"message": "Missing parameters"}),
@@ -191,4 +189,3 @@ class TestLogout:
         response = logout(token)
         assert response.status_code == response_code
         assert response.json() == response_json
-

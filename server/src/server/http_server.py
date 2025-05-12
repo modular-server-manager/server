@@ -1,10 +1,11 @@
 import os
 import pathlib
+import sys
 import traceback
 from datetime import timedelta
 from mimetypes import guess_type
 
-from argon2 import PasswordHasher
+import argon2.exceptions
 from flask import Flask, request
 from gamuLogger import Logger
 from http_code import HttpCode as HTTP
@@ -12,16 +13,12 @@ from version import Version
 
 from ..forge import installer
 from ..forge.web_interface import WebInterface
-from ..utils.hash import hash_string
+from ..utils.hash import hash_string, verify_hash
 from ..utils.misc import str2bool, time_from_now
 from .base_server import STATIC_PATH, BaseServer
 from .database import AccessLevel, AccessToken, McServer, ServerStatus, User
 
 Logger.set_module("http_server")
-
-
-ph = PasswordHasher()
-
 
 
 class HttpServer(BaseServer):
@@ -91,15 +88,15 @@ class HttpServer(BaseServer):
         self.__app.static_folder = STATIC_PATH
 
         @self.__app.route('/')
-        def index():
+        def root():
             # redirect to the app index
             Logger.trace("asking for index, redirecting to /app/")
             return "/redirecting to /app/", HTTP.PERMANENT_REDIRECT, {'Location': '/app/'}
 
         @self.__app.route('/app/')
-        def app_index():
-            Logger.trace("asking for index.html, redirecting to /app/index.html")
-            return static_proxy('index.html')
+        def index():
+            Logger.trace("asking for index.html, redirecting to /app/dashboard.html")
+            return static_proxy('dashboard.html')
 
         @self.__app.route('/app/<path:path>')
         def static_proxy(path):
@@ -240,8 +237,8 @@ class HttpServer(BaseServer):
             Logger.trace(f"API request for path: {request.path}")
             try:
                 data = request.get_json()
-                username = data.get('username')
-                password = data.get('password')
+                username = data.get('username', None)
+                password = data.get('password', None)
                 remember = str2bool(data.get('remember', 'false'))
                 if not username or not password:
                     Logger.trace("Missing parameters for login. got username: {}, password: {}, remember: {}".format(username, password, remember))
@@ -253,7 +250,7 @@ class HttpServer(BaseServer):
                     return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 user = self.database.get_user(username)
                 try:
-                    if not ph.verify(user.password, password):
+                    if not verify_hash(password, user.password):
                         Logger.trace(f"User {username} provided invalid password")
                         return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
                 except argon2.exceptions.VerifyMismatchError as e:
@@ -270,12 +267,13 @@ class HttpServer(BaseServer):
 
         @self.__app.route('/api/register', methods=['POST'])
         def register():
+            print("API request for path: {}".format(request.path))
             Logger.debug(f"API request for path: {request.path}")
             Logger.trace(request.get_json())
             try:
                 data = request.get_json()
-                username = data.get('username')
-                password = data.get('password')
+                username = data.get('username', None)
+                password = data.get('password', None)
                 remember = str2bool(data.get('remember', 'false'))
                 if not username or not password:
                     Logger.debug("Missing parameters for register. got username: {}, password: {}, remember: {}".format(username, password, remember))

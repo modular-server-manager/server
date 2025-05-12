@@ -59,33 +59,16 @@ authForm.addEventListener('submit', async (e) => {
         }
     }
 
-    const endpoint = mode === 'login' ? '/api/login' : '/api/register';
+    const method = mode === 'login' ? API.login : API.register;
 
     try {
-        // const response = await fetch(endpoint, {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({ username, password }),
-        // });
-        // const data = await response.json();
-        const {data, status} = await API.post(endpoint, { username, password });
+        const success = await method(username, password, true);
 
-        if (status === 200) {
-            let {token} = data;
-            Cookies.set('token', token, 1); // set cookie for 1 hour
-
-            authMessage.style.color = 'green';
-            authMessage.textContent = mode === 'login'
-                ? 'Login successful! Redirecting...'
-                : 'Registration successful! You can now log in.';
-            if (mode === 'login') {
-                setTimeout(() => {
-                    window.location.href = '/app/dashboard';
-                }, 1000);
-            }
+        if (success) {
+            window.location.href = '/app/dashboard';
         } else {
             authMessage.style.color = 'red';
-            authMessage.textContent = data.message || 'An error occurred.';
+            authMessage.textContent = 'An error occurred.';
         }
     } catch (err) {
         authMessage.style.color = 'red';

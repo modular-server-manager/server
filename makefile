@@ -1,9 +1,4 @@
 
-# if not defined, set the version to 0.1.0
-VERSION ?= 0.1.0
-
-# if version is in the form of x.y.z-dev-aaaa, set it to x.y.z-dev
-VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//')
 
 .PHONY: all build clean client server tests
 
@@ -29,7 +24,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC =  $(wildcard server/src/**/*.py) $(wildcard server/src/*.py) 
+SRV_SRC =  $(wildcard server/src/**/*.py) $(wildcard server/src/*.py)
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)
@@ -37,17 +32,36 @@ CONFIG_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(CONFIG_SRC))
 
 TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 
-WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
-ARCHIVE = mc_srv_manager-$(VERSION_STR).tar.gz
+
 
 PYPROJECT = pyproject.toml
 
 PYTHON_PATH = $(shell if [ -d env/bin ]; then echo "env/bin/"; elif [ -d env/Scripts ]; then echo "env/Scripts/"; else echo ""; fi)
+PYTHON_LIB = $(shell if [ -d env/lib/python3.12/site-packages ]; then echo "env/lib/python3.12/site-packages/"; elif [ -d env/Lib/site-packages ]; then echo "env/Lib/site-packages/"; else echo ""; fi)
 PYTHON = $(PYTHON_PATH)python
 
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
 EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
+
+# if not defined, get the version from git
+VERSION ?= $(shell $(PYTHON) get_version.py)
+
+# if version is in the form of x.y.z-dev-aaaa or x.y.z-dev+aaaa, set it to x.y.z-dev
+# VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//')
+VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//; s/-dev+.*//')
+
+
+WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
+ARCHIVE = mc_srv_manager-$(VERSION_STR).tar.gz
+
+
+$(PYTHON_LIB)/build:
+	$(PYTHON_PATH)pip install build
+
+
+print-%:
+	@echo $* = $($*)
 
 mc_srv_manager/client/%.html: client/src/%.html
 	@mkdir -p $(@D)
@@ -57,7 +71,7 @@ mc_srv_manager/client/%.html: client/src/%.html
 mc_srv_manager/client/%.js: client/src/%.ts
 	@mkdir -p $(@D)
 	@echo "Compiling $< to $@"
-	@tsc --outDir $(@D) $< --module es6 --target es6 --strict
+	@tsc --outDir $(@D) $< --module es6 --target es6 --strict --sourceMap
 
 mc_srv_manager/client/%.css: client/src/%.scss
 	@mkdir -p $(@D)
@@ -80,11 +94,11 @@ mc_srv_manager/client/assets/%: client/src/assets/%
 	@cp $< $@
 
 
-dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
+dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
 	$(PYTHON) -m build --outdir dist
 	@echo "Building wheel package complete."
 
-dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST)
+dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
 	mkdir -p $(TEMP_DIR)
 	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION_STR)
 	mkdir -p dist
