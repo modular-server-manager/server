@@ -1,6 +1,24 @@
 # Forge server manager
 
+## Authorization
+
+The default role is `USER`, app-wide and per-server.
+
+### App-wide
+
+- **USER**: Can see all server status.
+- **ADMIN**: Can see all server status.
+- **OPERATOR**: Everything an admin can do, plus create servers. Can also create other operators and admins.
+
+### Per-server
+
+- **USER**: Can see server status.
+- **ADMIN**: Can start/stop server, see logs and change server settings.
+- **OPERATOR**: Can delete the server. Can also create admin and operator for this server.
+
 ## API endpoints
+
+All endpoints return standard HTTP status codes and error messages in case of failure.
 
 ### Authentication
 
@@ -28,7 +46,6 @@
   **Headers:** `Authorization: Bearer <token>`  
   **Returns:** `{ "username": string, "access_level": string }`
 
----
 
 ### Server Management
 
@@ -68,7 +85,3 @@
   **Headers:** `Authorization: Bearer <token>`  
   **Body:** `{ "name": string, "mc_version": string, "forge_version": string }`  
   **Returns:** `{ "message": "Server Created" }` on success.
-
----
-
-All endpoints return standard HTTP status codes and error messages in case of failure.
