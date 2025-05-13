@@ -22,7 +22,7 @@ body {
 }
 
 // === Form ===
-form#auth-form {
+form {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -41,16 +41,6 @@ form#auth-form {
         margin-bottom: 0.1rem;
     }
 
-    input[type="text"],
-    input[type="password"] {
-        background: common.$mc-button-bg-inactive;
-        border: 2px solid common.$mc-button-bg-inactive;
-        outline: none;
-
-        &:focus {
-            border-color: common.$mc-button-border-hover;
-        }
-    }
 }
 
 // === Submit Button ===
@@ -68,12 +58,4 @@ form#auth-form {
     text-align: center;
     font-family: common.$mc-font;
     color: common.$mc-font-color;
-}
-
-// === Responsive ===
-@media (max-width: 500px) {
-    .auth-container {
-        min-width: 90vw;
-        padding: 1.2rem 0.5rem;
-    }
 }

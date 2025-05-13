@@ -1,75 +1,13 @@
-import sqlite3
-from enum import IntEnum
 import os
+import sqlite3
 from datetime import datetime
-import secrets
 
 from gamuLogger import Logger
-
 from version import Version
 
+from .types import AccessLevel, AccessToken, McServer, ServerStatus, User
+
 Logger.set_module("database")
-
-class AccessLevel(IntEnum):
-    USER = 0        # Global : Can see servers status       McServer : Nothing
-    ADMIN = 1       # Global : Nothing                      McServer : Can start/stop servers, see logs, manage settings
-    OPERATOR = 2    # Global : Can manage users             McServer : Can create and delete servers
-
-class ServerStatus(IntEnum):
-    STOPPED = 0
-    STARTING = 1
-    RUNNING = 2
-    STOPPING = 3
-    ERROR = 4
-
-class User:
-    def __init__(self, username: str, password: str, access_level: AccessLevel = AccessLevel.USER):
-        self.username = username
-        self.password = password
-        self.access_level = access_level
-
-    def __repr__(self):
-        return f"User(username={self.username}, access_level={self.access_level})"
-
-class McServer:
-    def __init__(self, name: str, mc_version: Version, forge_version: Version, path : str, status: ServerStatus = ServerStatus.STOPPED):
-        self.name = name
-        self.mc_version = mc_version
-        self.forge_version = forge_version
-        self.path = path
-        self.status = status
-
-    def __repr__(self):
-        return f"McServer(name={self.name}, mc_version={self.mc_version}, forge_version={self.forge_version}, status={self.status})"
-
-class AccessToken:
-    def __init__(self, username: str, token: str, expiration: datetime, remember: bool):
-        self.username = username
-        self.token = token
-        self.expiration = expiration
-        self.remember = remember
-        
-    def is_valid(self):
-        """
-        Check if the token is valid (not expired).
-        :return: True if the token is valid, False otherwise.
-        """
-        return self.expiration > datetime.now()
-
-    def __repr__(self):
-        return f"AccessToken(username={self.username}, token={self.token}, expiration={self.expiration})"
-    
-    @classmethod
-    def new(cls, username: str, expiration: datetime, remember: bool = False):
-        """
-        Create a new access token.
-        :param username: The username of the user.
-        :param expiration: The expiration time of the token.
-        :param remember: Whether to remember the token or not.
-        :return: The access token object.
-        """
-        token = secrets.token_urlsafe(64)
-        return cls(username, token, expiration, remember)
 
 class Database:
     def __init__(self, db_file):
@@ -84,7 +22,7 @@ class Database:
         self.cursor = self.connection.cursor()
         self.create_table()
         Logger.info(f"Database connected to {db_file}")
-        
+
     def close(self):
         """
         Close the database connection.
@@ -94,7 +32,7 @@ class Database:
             Logger.debug("Database connection closed")
         else:
             Logger.debug("No database connection to close")
-        
+
     def __del__(self):
         """
         Destructor to close the database connection when the object is deleted.
@@ -102,13 +40,18 @@ class Database:
         self.close()
 
     def create_table(self):
+        # table users
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
-                global_access_level INTEGER NOT NULL DEFAULT 0
+                global_access_level INTEGER NOT NULL DEFAULT 0,
+                registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                last_login INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                last_ip TEXT NOT NULL
             );
         ''')
+        # table servers
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS servers (
                 name TEXT PRIMARY KEY,
@@ -118,6 +61,7 @@ class Database:
                 path TEXT NOT NULL
             );
         ''')
+        # table server_users_access
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS server_users_access (
                 server_name TEXT NOT NULL,
@@ -128,6 +72,7 @@ class Database:
                 PRIMARY KEY (server_name, user_name)
             );
         ''')
+        # table access_tokens
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS access_tokens (
                 username TEXT PRIMARY KEY,
@@ -138,6 +83,7 @@ class Database:
                 UNIQUE (token)
             );
         ''')
+
         self.connection.commit()
 
     def add_user(self, user : User):
@@ -145,15 +91,24 @@ class Database:
         Add a new user to the database.
         """
         self.cursor.execute('''
-            INSERT INTO users (username, password, global_access_level)
-            VALUES (?, ?, ?)
-        ''', (user.username, user.password, user.access_level.value))
+            INSERT INTO users (username, password, global_access_level, registered_at, last_login, last_ip)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''',
+            (
+                user.username,
+                user.password,
+                user.global_access_level.value,
+                int(datetime.now().timestamp()),
+                int(datetime.now().timestamp()),
+                user.last_ip
+            )
+        )
         self.connection.commit()
-        
+
         # set default access level for all servers
         for server in self.get_servers():
             self.set_user_access(server.name, user.username, AccessLevel.USER)
-        Logger.debug(f"User {user.username} added with access level {user.access_level.name}")
+        Logger.debug(f"User {user.username} added with access level {user.global_access_level.name}")
 
     def get_user(self, username : str) -> User:
         """
@@ -162,7 +117,8 @@ class Database:
         :return: The user object.
         """
         self.cursor.execute('''
-            SELECT username, password, global_access_level FROM users WHERE username = ?
+            SELECT username, password, global_access_level, registered_at, last_login, last_ip
+            FROM users WHERE username = ?
         ''', (username,))
         res = self.cursor.fetchone()
         if res is None:
@@ -171,7 +127,10 @@ class Database:
         return User(
             username=res[0],
             password=res[1],
-            access_level=AccessLevel(res[2])
+            global_access_level=AccessLevel(res[2]),
+            registered_at=datetime.fromtimestamp(res[3]),
+            last_login=datetime.fromtimestamp(res[4]),
+            last_ip=res[5]
         )
 
     def has_user(self, username : str) -> bool:
@@ -187,31 +146,41 @@ class Database:
 
     def update_user(self, user : User):
         """
-        Update a user in the database.
+        Update a user (defined by it's username) in the database.
         :param user: The user object.
         """
         self.cursor.execute('''
-            UPDATE users SET password = ?, access_level = ?
+            UPDATE users SET password = ?, global_access_level = ?, last_login = ?, last_ip = ?
             WHERE username = ?
-        ''', (user.password, user.access_level.value, user.username))
+        ''', (user.password, user.global_access_level.value, int(user.last_login.timestamp()), user.last_ip, user.username))
         self.connection.commit()
-        Logger.debug(f"User {user.username} updated with access level {user.access_level.name}")
+        Logger.debug(f"User {user} updated")
 
     def delete_user(self, username : str):
         """
         Delete a user from the database.
         :param username: The username of the user.
         """
+        # delete user from users table
         self.cursor.execute('''
             DELETE FROM users WHERE username = ?
         ''', (username,))
         self.connection.commit()
-        
+        Logger.debug(f"User {username} deleted")
+
         # delete all access levels for this user
         self.cursor.execute('''
             DELETE FROM server_users_access WHERE user_name = ?
         ''', (username,))
         self.connection.commit()
+        Logger.debug(f"Access levels for user {username} deleted")
+
+        # delete all access tokens for this user
+        self.cursor.execute('''
+            DELETE FROM access_tokens WHERE username = ?
+        ''', (username,))
+        self.connection.commit()
+        Logger.debug(f"Access tokens for user {username} deleted")
 
     def get_users(self) -> list[User]:
         """
@@ -227,9 +196,11 @@ class Database:
         return [User(
             username=row[1],
             password=row[2],
-            access_level=AccessLevel(row[3])
+            global_access_level=AccessLevel(row[3]),
+            registered_at=datetime.fromtimestamp(row[4]),
+            last_login=datetime.fromtimestamp(row[5]),
+            last_ip=row[6]
         ) for row in res]
-
 
     def add_server(self, server : McServer):
         """
@@ -241,18 +212,18 @@ class Database:
             VALUES (?, ?, ?, ?, ?)
         ''', (server.name, str(server.mc_version), str(server.forge_version), server.status.value, server.path))
         self.connection.commit()
-        
+
         # set default access level for all users
         for user in self.get_users():
             self.set_user_access(server.name, user.username, AccessLevel.USER)
         Logger.debug(f"McServer {server.name} version {server.mc_version}-{server.forge_version} added with status {server.status.name}")
-        
+
     def get_server(self, name : str) -> McServer:
         """
         Get a server from the database.
         :param name: The name of the server.
         :return: The server object.
-        """       
+        """
         self.cursor.execute('''
             SELECT * FROM servers WHERE name = ?
         ''', (name,))
@@ -266,7 +237,7 @@ class Database:
             status=ServerStatus(res[4]),
             path=res[5]
         )
-        
+
     def has_server(self, name : str) -> bool:
         """
         Check if a server exists in the database.
@@ -277,7 +248,7 @@ class Database:
             SELECT * FROM servers WHERE name = ?
         ''', (name,))
         return self.cursor.fetchone() is not None
-    
+
     def update_server(self, server : McServer):
         """
         Update a server in the database.
@@ -288,7 +259,7 @@ class Database:
             WHERE name = ?
         ''', (str(server.mc_version), str(server.forge_version), server.status.value, server.path, server.name))
         self.connection.commit()
-        
+
     def delete_server(self, name : str):
         """
         Delete a server from the database.
@@ -298,7 +269,7 @@ class Database:
             DELETE FROM servers WHERE name = ?
         ''', (name,))
         self.connection.commit()
-        
+
         # delete all access levels for this server
         self.cursor.execute('''
             DELETE FROM server_users_access WHERE server_name = ?
@@ -419,7 +390,7 @@ class Database:
         if res is None:
             raise ValueError(f"Access token {token} not found")
         return self.get_user(res[0])
-    
+
     def exist_user_token(self, token : str) -> bool:
         """
         Check if an access token exists in the database.

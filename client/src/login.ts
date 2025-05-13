@@ -66,12 +66,18 @@ authForm.addEventListener('submit', async (e) => {
 
         if (success) {
             window.location.href = '/app/dashboard';
-        } else {
-            authMessage.style.color = 'red';
-            authMessage.textContent = 'An error occurred.';
         }
+        else if (mode === 'register') {
+            authMessage.style.color = 'red';
+            authMessage.textContent = 'Registration failed. Please try again.';
+        }
+        else {
+            authMessage.style.color = 'red';
+            authMessage.textContent = 'Invalid username or password.';
+        }
+
     } catch (err) {
         authMessage.style.color = 'red';
-        authMessage.textContent = 'Network error.';
+        authMessage.textContent = 'An error occurred. Please try again later.';
     }
 });

@@ -7,18 +7,18 @@ all: build
 TEMP_DIR = build
 
 WEB_SRC_TS = $(wildcard client/src/*.ts)
-WEB_SRC_HTML = $(wildcard client/src/*.html)
+WEB_SRC_HTML = $(wildcard client/src/*.template.html)
 WEB_SRC_SASS = $(wildcard client/src/*.scss)
 WEB_ASSETS = $(wildcard client/src/assets/*)
 
 WEB_DIST_JS = $(patsubst client/src/%.ts,mc_srv_manager/client/%.js,$(WEB_SRC_TS))
-WEB_DIST_HTML = $(patsubst client/src/%.html,mc_srv_manager/client/%.html,$(WEB_SRC_HTML))
+WEB_DIST_HTML = $(patsubst client/src/%.template.html,mc_srv_manager/client/%.html,$(WEB_SRC_HTML))
 WEB_DIST_CSS = $(patsubst client/src/%.scss,mc_srv_manager/client/%.css,$(WEB_SRC_SASS))
 WEB_DIST_ASSETS = $(patsubst client/src/assets/%,mc_srv_manager/client/assets/%,$(WEB_ASSETS))
 WEB_DIST = $(WEB_DIST_JS) $(WEB_DIST_HTML) $(WEB_DIST_CSS) $(WEB_DIST_ASSETS)
 
 WEB_DEV_JS = $(patsubst client/src/%.ts,client/dist/%.js,$(WEB_SRC_TS))
-WEB_DEV_HTML = $(patsubst client/src/%.html,client/dist/%.html,$(WEB_SRC_HTML))
+WEB_DEV_HTML = $(patsubst client/src/%.template.html,client/dist/%.html,$(WEB_SRC_HTML))
 WEB_DEV_CSS = $(patsubst client/src/%.scss,client/dist/%.css,$(WEB_SRC_SASS))
 WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSETS))
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
@@ -31,6 +31,13 @@ CONFIG_SRC = $(wildcard server/src/config.json)
 CONFIG_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(CONFIG_SRC))
 
 TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
+
+
+# HTML TEMPLATES DEPENDENCIES
+mc_srv_manager/client/account.html: client/src/metadata.template client/src/header.template
+mc_srv_manager/client/dashboard.html: client/src/metadata.template client/src/header.template
+mc_srv_manager/client/login.html: client/src/metadata.template
+
 
 
 
@@ -63,10 +70,10 @@ $(PYTHON_LIB)/build:
 print-%:
 	@echo $* = $($*)
 
-mc_srv_manager/client/%.html: client/src/%.html
+mc_srv_manager/client/%.html: client/src/%.template.html
 	@mkdir -p $(@D)
-	@echo "Copying $< to $@"
-	@cp $< $@
+	@echo "Compiling $< to $@"
+	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
 mc_srv_manager/client/%.js: client/src/%.ts
 	@mkdir -p $(@D)
@@ -130,7 +137,7 @@ install: $(EXECUTABLE)
 
 start: $(EXECUTABLE)
 	@echo "Starting server..."
-	@$(EXECUTABLE) --module-level all:TRACE --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(EXECUTABLE) --module-level all:TRACE --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
 
 
 tests: clean-tests test-report.xml
@@ -153,10 +160,10 @@ client/dist/assets/%: client/src/assets/%
 	@echo "Copying $< to $@"
 	@cp $< $@
 
-client/dist/%.html: client/src/%.html
+client/dist/%.html: client/src/%.template.html
 	@mkdir -p $(@D)
-	@echo "Copying $< to $@"
-	@cp $< $@
+	@echo "Compiling $< to $@"
+	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
 
 client-dev: $(WEB_DEV_DIST)

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {{ insert("metadata") }}
+    <link rel="stylesheet" href="account.css" />
+</head>
+
+<body>
+    {{ insert("header") }}
+    <main>
+        <h1>Account Management</h1>
+        <div id="account-info">
+            <p id="account-name">Account Name: <span id="name"></span></p>
+        </div>
+        <div class="account-actions">
+            <div class="account-action">
+                <h2>Change password</h2>
+                <form id="change-password-form">
+                    <label for="new-password">New Password:</label>
+                    <input type="password" id="new-password" name="new-password" required />
+                    <label for="confirm-password">Confirm Password:</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required />
+                    <button type="submit">Change Password</button>
+                </form>
+            </div>
+            <div class="account-action">
+                <h2>Delete Account</h2>
+                <button id="delete-account">Delete Account</button>
+            </div>
+        </div>
+    <script type="module" src="account.js"></script>
+    <script type="module" src="header.js"></script>
+</body>
+
+</html>

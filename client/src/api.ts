@@ -10,8 +10,7 @@ export default class API {
     private static async get(url: string, params: any) {
         let token = Cookies.get('token');
         if (!token) {
-            console.error('No token found in cookies');
-            return;
+            throw new Error('No token found in cookies');
         }
         const response = await fetch(url + '?' + new URLSearchParams(params), {
         method: 'GET',
@@ -33,11 +32,15 @@ export default class API {
      * @returns Promise<any>
      */
     private static async post(url: string, body: any) {
+        let token = Cookies.get('token');
+        if (!token) {
+            throw new Error('No token found in cookies');
+        }
         const response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + Cookies.get('token')
+            'Authorization': 'Bearer ' + token
         },
         body: JSON.stringify(body)
         });
@@ -95,8 +98,11 @@ export default class API {
             Cookies.set('token', token, 1); // set cookie for 1 hour
             return true;
         }
+        else if (status === 500) {
+            console.error('Error registering user:', data['message']);
+            throw new Error('Error registering user');
+        }
         else{
-            console.error('Error registering user:', data);
             return false;
         }
     }
@@ -108,8 +114,11 @@ export default class API {
             Cookies.set('token', token, 1); // set cookie for 1 hour
             return true;
         }
+        else if (status === 500) {
+            console.error('Error logging in user:', data['message']);
+            throw new Error('Error logging in user');
+        }
         else{
-            console.error('Error logging in user:', data);
             return false;
         }
     }
@@ -124,9 +133,68 @@ export default class API {
         if (status === 200) {
             return true;
         }
-        else{
+        else if (status === 500) {
             console.error('Error logging out user:', data['message']);
+            throw new Error('Error logging out user');
+        }
+        else{
             return false;
         }
     }
+
+    public static async change_password(password: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post('/api/user/update_password', { password });
+        if (status === 200) {
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error changing password:', data['message']);
+            throw new Error('Error changing password');
+        }
+        else{
+            return false;
+        }
+    }
+
+    public static async delete_account() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post('/api/delete-user', {});
+        if (status === 200) {
+            Cookies.erase('token');
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error deleting user:', data['message']);
+            throw new Error('Error deleting user');
+        }
+        else{
+            return false;
+        }
+    }
+
+    public static async get_user_info() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.get('/api/user', {});
+        if (status === 200) {
+            return data;
+        }
+        else if (status === 500) {
+            console.error('Error getting user info:', data['message']);
+            throw new Error('Error getting user info');
+        }
+        else{
+            return false;
+        }
+    }
+
 }

@@ -1,9 +1,10 @@
-from abc import ABC
 import os
-from gamuLogger import Logger
+from abc import ABC
 
 from config import JSONConfig
-from .database import Database
+from gamuLogger import Logger
+
+from ..database.database import Database
 
 Logger.set_module("base_server")
 
