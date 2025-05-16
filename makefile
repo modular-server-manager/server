@@ -24,7 +24,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC =  $(wildcard server/src/**/*.py) $(wildcard server/src/*.py)
+SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/forge/data.xml
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)
@@ -100,6 +100,10 @@ mc_srv_manager/client/assets/%: client/src/assets/%
 	@echo "Copying $< to $@"
 	@cp $< $@
 
+mc_srv_manager/%: server/src/%
+	@mkdir -p $(@D)
+	@echo "Copying $< to $@"
+	@cp $< $@
 
 dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
 	$(PYTHON) -m build --outdir dist

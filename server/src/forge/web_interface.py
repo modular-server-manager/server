@@ -1,13 +1,12 @@
+import json
+import re
+from datetime import datetime, timedelta
+from typing import Any, Dict
+
 import requests
 from bs4 import BeautifulSoup
-import re
-import json
-from typing import Any
-from datetime import datetime, timedelta
-
-from gamuLogger import Logger
 from cache import Cache
-
+from gamuLogger import Logger
 from version import Version
 
 Logger.set_module("forge_reader")
@@ -25,10 +24,10 @@ class JsonEncoder(json.JSONEncoder):
 
 class WebInterface:
     base_url = "https://files.minecraftforge.net/net/minecraftforge/forge/"
-    
+
     @staticmethod
     @Cache(expire_in=timedelta(days=1))
-    def get_mc_versions():
+    def get_mc_versions() -> Dict[Version, str]:
         """
         Fetches the list of Minecraft versions from the Forge website.
         """
@@ -68,10 +67,10 @@ class WebInterface:
         Logger.debug(f"Found {len(mc_versions)} Minecraft versions.")
         Logger.trace(f"Found Minecraft versions: {mc_versions}")
         return mc_versions
-    
+
     @staticmethod
     @Cache(expire_in=timedelta(days=1))
-    def get_forge_versions(page_path : str):
+    def get_forge_versions(page_path : str) -> Dict[Version, dict[str, Any]]:
         """
         Fetches the content of a specific Minecraft version page.
         :param page_path: Relative path to the version page
@@ -147,10 +146,19 @@ class WebInterface:
         mc_versions = WebInterface.get_mc_versions()
         if mc_version not in mc_versions:
             raise ValueError(f"Invalid Minecraft version: {mc_version}")
-        
+
         page_path = mc_versions[mc_version]
         forge_versions = WebInterface.get_forge_versions(page_path)
         if forge_version not in forge_versions:
             raise ValueError(f"Invalid Forge version: {forge_version}")
 
         return forge_versions[forge_version]['installer']
+
+if __name__ == "__main__":
+    # list all Minecraft versions
+    mc_versions = WebInterface.get_mc_versions()
+    print("Minecraft versions:")
+    mc_versions = {version: page for version, page in mc_versions.items() if version >= Version(1, 7, 0)}
+    for version, page in mc_versions.items():
+        forge_versions = WebInterface.get_forge_versions(page)
+        print(f"  {version} ({len(forge_versions)})")
