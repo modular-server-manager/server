@@ -140,6 +140,24 @@ class Property:
 
         raise ValueError(f"Property '{self.__name}' has no value set and no default value available.")
 
+    def __int__(self) -> int:
+        """
+        Convert the property value to an integer if possible.
+
+        :return: Integer value of the property.
+        """
+        if self.__value.isdigit():
+            return int(self.__value)
+        raise ValueError(f"Property '{self.__name}' cannot be converted to an integer.")
+
+    def __str__(self) -> str:
+        """
+        Get the string representation of the property.
+
+        :return: String representation of the property.
+        """
+        return self.__value if self.__value is not None else self.__default
+
     @classmethod
     def from_xml(cls, element: Element) -> 'Property':
         """
