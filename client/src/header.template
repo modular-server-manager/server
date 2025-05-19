@@ -9,3 +9,4 @@
         Disconnect
     </button>
 </header>
+<script type="module" src="header.js"></script>

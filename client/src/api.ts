@@ -197,4 +197,22 @@ export default class API {
         }
     }
 
+    public static async get_server_list() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return {};
+        }
+        const {data, status} = await API.get('/api/servers', {});
+        if (status === 200) {
+            return data;
+        }
+        else if (status === 500) {
+            console.error('Error getting server list:', data['message']);
+            throw new Error('Error getting server list');
+        }
+        else{
+            return {};
+        }
+    }
+
 }

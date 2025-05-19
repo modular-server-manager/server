@@ -1,2 +1,30 @@
 @use './common.scss';
 @use './header.scss';
+
+
+#server-list {
+    display: flex;
+    flex-direction: column;
+    margin: auto 10px;
+    gap: 16px;
+
+    .server {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+
+        &>* {
+            width: 25%;
+
+            &:first-child {
+                text-align: left;
+            }
+            &:last-child {
+                text-align: right;
+            }
+        }
+    }
+}
