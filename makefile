@@ -142,11 +142,11 @@ install: $(EXECUTABLE)
 
 start: $(EXECUTABLE)
 	@echo "Starting server..."
-	@$(EXECUTABLE) --module-level all:TRACE --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(EXECUTABLE) --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
 
 start/debug: $(EXECUTABLE)
 	@echo "Starting debug tool..."
-	@$(DEBUG_LOCAL_EXECUTABLE) --module-level all:TRACE --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(DEBUG_LOCAL_EXECUTABLE) --module-level forge.properties:INFO --log-file server.log:TRACE -c /var/minecraft/config.json
 
 
 

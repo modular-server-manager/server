@@ -20,7 +20,11 @@ class ForgeServer:
     Class to manage a Minecraft Forge server.
     """
 
-    def __init__(self, installation_dir: str, on_chat_message : Callable[[str], None]|None = None) -> None:
+    def __init__(self,
+                 installation_dir: str,
+                 on_chat_message : Callable[[str], None]|None = None,
+                 on_stop : Callable[[], None]|None = None,
+                ) -> None:
         self.name = installation_dir.split("/")[-1]
         self.installation_dir = installation_dir
         self.properties = Properties()
@@ -29,12 +33,19 @@ class ForgeServer:
         self.__ServerStatus = ServerStatus.STOPPED
         self.__server_thread = th.Thread(target=self.__start_server, daemon=True,  name=self.name)
         self.__on_chat_message = on_chat_message
+        self.__on_stop = on_stop
 
     def set_on_chat_message(self, on_chat_message: Callable[[str], None]) -> None:
         """
         Set the callback function to be called when a chat message is received.
         """
         self.__on_chat_message = on_chat_message
+
+    def set_on_stop(self, on_stop: Callable[[], None]) -> None:
+        """
+        Set the callback function to be called when the server stops.
+        """
+        self.__on_stop = on_stop
 
     def __start_server(self):
         """
@@ -77,8 +88,12 @@ class ForgeServer:
         Logger.debug(f"waiting for server {self.name} to stop")
         process.stdout.close()
         process.wait()
+        if self.__rcon:
+            self.__rcon.close()
         Logger.debug(f"server {self.name} stopped")
         self.__ServerStatus = ServerStatus.STOPPED
+        if self.__on_stop:
+            self.__on_stop()
 
     def start(self):
         """
@@ -107,18 +122,7 @@ class ForgeServer:
         """
         Stop the Minecraft Forge server.
         """
-        if self.__ServerStatus in [ServerStatus.STOPPED, ServerStatus.STOPPING]:
-            Logger.warning(f"Server \"{self.name}\" is already stopped or stopping.")
-            return
-        self.__ServerStatus = ServerStatus.STOPPING
-        if self.__rcon:
-            self.__rcon.send_command("stop")
-            self.__rcon.close()
-            Logger.info(f"Stopping server \"{self.name}\"...")
-        else:
-            Logger.warning("RCON connection not established. Cannot stop the server.")
-        self.__server_thread.join()
-        Logger.info(f"Server \"{self.name}\" stopped")
+        self.send_command("stop")
 
     def __ensure_stop(self):
         """

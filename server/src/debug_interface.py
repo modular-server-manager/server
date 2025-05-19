@@ -30,15 +30,13 @@ def main():
     srvs_path = conf.get("forge_servers_path")
     srv_path = ask_for_choice("Select a server", "Choose the path of the server to start", os.listdir(srvs_path))
 
-    server = ForgeServer(
-        installation_dir=os.path.join(srvs_path, srv_path)
-    )
-
     root = DebugTk()
 
-    def stop():
-        server.stop()
-        root.close()
+    server = ForgeServer(
+        installation_dir=os.path.join(srvs_path, srv_path),
+        on_stop=root.close
+    )
+
 
     class SendCmd:
         def __init__(self):
@@ -56,7 +54,7 @@ def main():
     send_cmd.write_res = write_term
 
 
-    root.add_button("Stop Server", stop)
+    root.add_button("Stop Server", server.stop)
     root.add_button("Reload World", server.reload_world)
     root.add_button("Get Player List", lambda: print(server.get_player_list()))
 
