@@ -15,7 +15,7 @@ dependencies = [
     "charset-normalizer==3.4.1",
     "click==8.1.8",
     "Flask==3.1.0",
-    "gamuLogger==3.1.4",
+    "gamuLogger==3.2.0",
     "idna==3.10",
     "itsdangerous==2.2.0",
     "Jinja2==3.1.6",
@@ -38,6 +38,7 @@ dependencies = [
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
 mc-srv-manager-install = "mc_srv_manager.forge.installer:main"
+mc-srv-manager-local-debug = "mc_srv_manager.debug_interface:main"
 
 [tool.setuptools]
 packages = ["mc_srv_manager",

@@ -36,8 +36,8 @@ TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 # HTML TEMPLATES DEPENDENCIES
 mc_srv_manager/client/account.html: client/src/metadata.template client/src/header.template
 mc_srv_manager/client/dashboard.html: client/src/metadata.template client/src/header.template
+mc_srv_manager/client/server.html: client/src/metadata.template client/src/header.template
 mc_srv_manager/client/login.html: client/src/metadata.template
-
 
 
 
@@ -50,6 +50,7 @@ PYTHON = $(PYTHON_PATH)python
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
 EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
+DEBUG_LOCAL_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-local-debug$(EXECUTABLE_EXTENSION)
 
 # if not defined, get the version from git
 VERSION ?= $(shell $(PYTHON) get_version.py)
@@ -142,6 +143,11 @@ install: $(EXECUTABLE)
 start: $(EXECUTABLE)
 	@echo "Starting server..."
 	@$(EXECUTABLE) --module-level all:TRACE --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
+
+start/debug: $(EXECUTABLE)
+	@echo "Starting debug tool..."
+	@$(DEBUG_LOCAL_EXECUTABLE) --module-level all:TRACE --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
+
 
 
 tests: clean-tests test-report.xml

@@ -15,18 +15,18 @@ RE_MC_VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)$")
 RE_FORGE_VERSION = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.([0-9]+))?")
 
 class JsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Version):
-            return str(obj)
-        elif isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
+    def default(self, o : Any) -> str:
+        if isinstance(o, Version):
+            return str(o)
+        elif isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
 
 class WebInterface:
     base_url = "https://files.minecraftforge.net/net/minecraftforge/forge/"
 
     @staticmethod
-    @Cache(expire_in=timedelta(days=1))
+    @Cache(expire_in=timedelta(days=1)) # type: ignore
     def get_mc_versions() -> Dict[Version, str]:
         """
         Fetches the list of Minecraft versions from the Forge website.
@@ -49,15 +49,15 @@ class WebInterface:
         if not sidebar_nav:
             raise ValueError("No sidebar-nav found in the HTML.")
         # find all the links within the sidebar-nav
-        links = sidebar_nav.find_all('a')
+        links = sidebar_nav.find_all('a') # type: ignore
         # keep only the links where the text matches the regex
         mc_versions : dict[Version, str] = {} # version : web page relative path
         for link in links:
             if RE_MC_VERSION.match(link.text):
                 Logger.debug(f"Found Minecraft version: {link.text}")
-                mc_versions[Version.from_string(link.text)] = link['href']
+                mc_versions[Version.from_string(link.text)] = link['href'] # type: ignore
 
-        if active := sidebar_nav.find(class_="elem-active"):
+        if active := sidebar_nav.find(class_="elem-active"): # type: ignore
             version = active.text.strip()
             link = f"index_{version}.html"
             if RE_MC_VERSION.match(version):
@@ -69,7 +69,7 @@ class WebInterface:
         return mc_versions
 
     @staticmethod
-    @Cache(expire_in=timedelta(days=1))
+    @Cache(expire_in=timedelta(days=1)) # type: ignore
     def get_forge_versions(page_path : str) -> Dict[Version, dict[str, Any]]:
         """
         Fetches the content of a specific Minecraft version page.
@@ -91,37 +91,37 @@ class WebInterface:
         soup = BeautifulSoup(html_content, 'html.parser')
         download_list = soup.find(class_="download-list") #this is a table
         # get tbody
-        tbody = download_list.find('tbody')
+        tbody = download_list.find('tbody') # type: ignore
         # get all rows
-        rows = tbody.find_all('tr')
+        rows = tbody.find_all('tr') # type: ignore
 
         forge_versions : dict[Version, dict[str, Any]] = {}
 
         for row in rows:
             data : dict[str, Any] = {}
-            download_version = row.find('td', class_='download-version')
-            promo_recommended = download_version.find('i', class_='promo-recommended')
+            download_version = row.find('td', class_='download-version') # type: ignore
+            promo_recommended = download_version.find('i', class_='promo-recommended') # type: ignore
             data['recommended'] = promo_recommended is not None
-            promo_latest = download_version.find('i', class_='promo-latest')
+            promo_latest = download_version.find('i', class_='promo-latest') # type: ignore
             data['latest'] = promo_latest is not None
-            bugged = download_version.find('i', class_='fa-bug')
+            bugged = download_version.find('i', class_='fa-bug') # type: ignore
             data['bugged'] = bugged is not None
 
-            version = download_version.text.strip()
+            version = download_version.text.strip() # type: ignore
             version_match = RE_FORGE_VERSION.match(version)
             if not version_match:
                 raise ValueError(f"Invalid Forge version format: {version}")
             version = version_match.group(0)
 
-            download_time = row.find('td', class_='download-time')
-            data['time'] = datetime.strptime(download_time['title'], "%Y-%m-%d %H:%M:%S")
+            download_time = row.find('td', class_='download-time') # type: ignore
+            data['time'] = datetime.strptime(download_time['title'], "%Y-%m-%d %H:%M:%S") # type: ignore
 
-            download_links = row.find('ul', class_='download-links')
-            for link in download_links.find_all('li'):
+            download_links = row.find('ul', class_='download-links') # type: ignore
+            for link in download_links.find_all('li'): # type: ignore
                 # get the one who has "Installer" in the text of the first <a> tag
-                if "Installer" in link.a.text:
-                    if info_link := link.find('a', class_='info-link'):
-                        data['installer'] = info_link['href']
+                if "Installer" in link.a.text: # type: ignore
+                    if info_link := link.find('a', class_='info-link'): # type: ignore
+                        data['installer'] = info_link['href'] # type: ignore
                         break
             else:
                 Logger.warning(f"No installer link found for forge version: {version}")
@@ -135,7 +135,7 @@ class WebInterface:
         return forge_versions
 
     @staticmethod
-    @Cache(expire_in=timedelta(days=1))
+    @Cache(expire_in=timedelta(days=1)) # type: ignore
     def get_forge_installer_url(mc_version: Version, forge_version: Version) -> str:
         """
         Fetches the installer URL for a specific Minecraft and Forge version.

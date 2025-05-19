@@ -57,8 +57,7 @@ class Database:
                 name TEXT PRIMARY KEY,
                 mc_version TEXT NOT NULL,
                 forge_version TEXT NOT NULL,
-                status INTEGER NOT NULL DEFAULT 0,
-                path TEXT NOT NULL
+                status INTEGER NOT NULL DEFAULT 0
             );
         ''')
         # table server_users_access
@@ -288,11 +287,10 @@ class Database:
         if res is None:
             raise ValueError("No servers found")
         return [McServer(
-            name=row[1],
-            mc_version=Version.from_string(row[2]),
-            forge_version=Version.from_string(row[3]),
-            status=ServerStatus(row[4]),
-            path=row[5]
+            name=row[0],
+            mc_version=Version.from_string(row[1]),
+            forge_version=Version.from_string(row[2]),
+            status=ServerStatus(row[3])
         ) for row in res]
 
     def set_user_access(self, server_name : str, user_name : str, access_level : AccessLevel):

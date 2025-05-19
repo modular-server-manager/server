@@ -12,9 +12,9 @@ from .websocket_server import WebSocketServer
 Logger.set_module("server")
 
 class Server(HttpServer, WebSocketServer):
-    def __init__(self, port: int = 5000, config_path: str = None):
+    def __init__(self, config_path: str, port: int = 5000):
         Logger.trace("Initializing Server")
-        HttpServer.__init__(self, port, config_path)
+        HttpServer.__init__(self, config_path, port)
         WebSocketServer.__init__(self, config_path)
 
     def start(self):

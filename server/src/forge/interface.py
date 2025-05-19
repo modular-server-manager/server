@@ -2,27 +2,17 @@ import atexit
 import re
 import subprocess
 import threading as th
-from enum import Enum
 from typing import Callable
 
 from gamuLogger import Logger
-from properties import Properties
-from rcon import RCON
 
-# [20:37:10] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.20.1
+from ..database.types import ServerStatus  # same enum for consistency
+from .properties import Properties
+from .rcon import RCON
+
 RE_LOG_TEXT = re.compile(r"^.*\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[.*/([A-Z]+)\] \[.*/(.*)\]: (.*)$") # first match is a color code, second match is the text
 
 Logger.set_module("forge server.server manager")
-
-
-class State(Enum):
-    """
-    Enum to represent the state of the server.
-    """
-    STARTING = 1
-    RUNNING  = 2
-    STOPPING = 3
-    STOPPED  = 4
 
 
 class ForgeServer:
@@ -36,7 +26,7 @@ class ForgeServer:
         self.properties = Properties()
         self.properties.load(f"{self.installation_dir}/server.properties")
         self.__rcon = RCON("localhost", int(self.properties['rcon.port']), str(self.properties['rcon.password']))
-        self.__state = State.STOPPED
+        self.__ServerStatus = ServerStatus.STOPPED
         self.__server_thread = th.Thread(target=self.__start_server, daemon=True,  name=self.name)
         self.__on_chat_message = on_chat_message
 
@@ -57,13 +47,13 @@ class ForgeServer:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
-        self.__state = State.STARTING
+        self.__ServerStatus = ServerStatus.STARTING
         for line in iter(process.stdout.readline, b''):
-            if self.__state in [State.STOPPING, State.STOPPED]:
+            if self.__ServerStatus in [ServerStatus.STOPPING, ServerStatus.STOPPED]:
                 break
             decoded_line = line.decode('utf-8').strip()
             if "Done" in decoded_line:
-                self.__state = State.RUNNING
+                self.__ServerStatus = ServerStatus.RUNNING
             for l in decoded_line.split("\n"):
                 match = RE_LOG_TEXT.match(l)
                 if not match:
@@ -81,9 +71,14 @@ class ForgeServer:
                     Logger.debug(match.group(3))
                 if match.group(2) == "MinecraftServer" and match.group(1) == "INFO" and self.__on_chat_message:
                     self.__on_chat_message(match.group(3))
+            if "Failed to start" in decoded_line:
+                self.__ServerStatus = ServerStatus.ERROR
+                break
+        Logger.debug(f"waiting for server {self.name} to stop")
         process.stdout.close()
         process.wait()
-        self.__state = State.STOPPED
+        Logger.debug(f"server {self.name} stopped")
+        self.__ServerStatus = ServerStatus.STOPPED
 
     def start(self):
         """
@@ -93,8 +88,12 @@ class ForgeServer:
         # Start the server with run.sh script in the installation directory
         self.__server_thread.start()
 
-        while self.__state != State.RUNNING:
+        while self.__ServerStatus not in (ServerStatus.RUNNING, ServerStatus.ERROR):
             th.Event().wait(0.2)
+
+        if self.__ServerStatus == ServerStatus.ERROR:
+            Logger.error(f"Server \"{self.name}\" failed to start.")
+            return
 
         self.__rcon.open()
         self.__rcon.authenticate()
@@ -102,14 +101,16 @@ class ForgeServer:
             f"Server \"{self.name}\" started"
         )
 
+        atexit.register(self.__ensure_stop)
+
     def stop(self):
         """
         Stop the Minecraft Forge server.
         """
-        if self.__state in [State.STOPPED, State.STOPPING]:
+        if self.__ServerStatus in [ServerStatus.STOPPED, ServerStatus.STOPPING]:
             Logger.warning(f"Server \"{self.name}\" is already stopped or stopping.")
             return
-        self.__state = State.STOPPING
+        self.__ServerStatus = ServerStatus.STOPPING
         if self.__rcon:
             self.__rcon.send_command("stop")
             self.__rcon.close()
@@ -119,41 +120,13 @@ class ForgeServer:
         self.__server_thread.join()
         Logger.info(f"Server \"{self.name}\" stopped")
 
-    def ensure_stop(self):
+    def __ensure_stop(self):
         """
         Ensure that the server is stopped when the script exits.
         """
-        if self.__state not in [State.STOPPED, State.STOPPING]:
-            Logger.warning("Server is not stopped. Stopping server...")
+        if self.__ServerStatus not in [ServerStatus.STOPPED, ServerStatus.STOPPING]:
+            Logger.warning(f"Server {self.name} is not stopped. Stopping server...")
             self.stop()
-
-    def get_player_list(self):
-        """
-        Get the list of players currently online on the server.
-        """
-        if self.__rcon:
-            if response := self.__rcon.send_command("list").strip():
-                try:
-                    player_list = response.split(":")[1].split(",")
-                except Exception as e:
-                    Logger.error(f"Error parsing player list: {e}")
-                    Logger.error(f"Response: '{response}'")
-                    return []
-                return list(map(lambda x: x.strip(), player_list))
-            else:
-                Logger.warning("No players online.")
-                return []
-        Logger.warning("RCON connection not established. Cannot get player list.")
-        return None
-
-    def reload_world(self):
-        """
-        Reload the world on the server.
-        """
-        if self.__rcon:
-            return self.__rcon.send_command("reload")
-        Logger.warning("RCON connection not established. Cannot reload world.")
-        return None
 
     def send_command(self, command: str):
         """
@@ -165,44 +138,36 @@ class ForgeServer:
         Logger.warning("RCON connection not established. Cannot send command.")
         return None
 
+    def get_player_list(self):
+        """
+        Get the list of players currently online on the server.
+        """
+        if response := self.send_command("list").strip():
+            try:
+                player_list = response.split(":")[1].split(",")
+            except Exception as e:
+                Logger.error(f"Error parsing player list: {e}")
+                Logger.error(f"Response: '{response}'")
+                return []
+            return list(map(lambda x: x.strip(), player_list))
+        else:
+            Logger.warning("No players online.")
+            return []
 
+    def reload_world(self):
+        """
+        Reload the world on the server.
+        """
+        return self.send_command("reload")
 
-if __name__ == "__main__":
-    from gamuLogger import Levels
-    Logger.set_default_module_level(Levels.TRACE)
-    Logger.set_module_level("forge.properties", Levels.INFO)
-    Logger.set_level("stdout", Levels.TRACE)
+    def get_status(self):
+        """
+        Get the status of the server.
+        """
+        return self.__ServerStatus
 
-    from debug_tk import DebugTk
-
-    server = ForgeServer("/var/minecraft/test")
-
-    class SendCmd:
-        def __init__(self):
-            self.send = server.send_command
-            self.write_res = None
-
-        def __call__(self, cmd: str):
-            if res := self.send(cmd):
-                self.write_res(res)
-
-    send_cmd = SendCmd()
-
-    root = DebugTk()
-    write_term, clear_term = root.add_terminal(send_cmd)
-    send_cmd.write_res = write_term
-
-    def stop():
-        server.stop()
-        root.close()
-
-    root.add_button("Stop Server", stop)
-    root.add_button("Reload World", server.reload_world)
-    root.add_button("Get Player List", lambda: print(server.get_player_list()))
-
-    server.start()
-    atexit.register(server.ensure_stop)
-
-    server.set_on_chat_message(write_term)
-
-    root.mainloop()
+    def get_seed(self):
+        """
+        Get the seed of the world on the server.
+        """
+        return self.send_command("seed")

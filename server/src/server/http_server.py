@@ -1,10 +1,12 @@
+# pyright: reportUnusedFunction=false
+# pyright: reportMissingTypeStubs=false
+
 import os
 import pathlib
-import sys
 import traceback
 from datetime import datetime, timedelta
 from mimetypes import guess_type
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 import argon2.exceptions
 from flask import Flask, request
@@ -15,6 +17,7 @@ from version import Version
 from ..database.types import (AccessLevel, AccessToken, McServer, ServerStatus,
                               User)
 from ..forge import installer
+from ..forge.interface import ForgeServer
 from ..forge.web_interface import WebInterface
 from ..utils.hash import hash_string, verify_hash
 from ..utils.misc import str2bool, time_from_now
@@ -22,9 +25,24 @@ from .base_server import STATIC_PATH, BaseServer
 
 Logger.set_module("http_server")
 
+T = TypeVar('T')
+
+JsonAble = dict[str, 'JsonAble'] | list['JsonAble'] | str | int | float | bool | None
+
+FlaskReturnData = (
+    tuple[JsonAble, int, dict[str, str]] |      # data, status code, headers
+    tuple[JsonAble, int] |                      # data, status code
+    tuple[JsonAble] |                           # data
+    JsonAble |                                  # data
+
+    tuple[str, int, dict[str, str]] |           # string, status code, headers
+    tuple[str, int] |                           # string, status code
+    tuple[str] |                                # string
+    str                                         # string
+)
 
 class HttpServer(BaseServer):
-    def __init__(self, port: int = 5000, config_path: str = None):
+    def __init__(self, config_path: str, port: int = 5000):
         Logger.trace("Initializing HttpServer")
         BaseServer.__init__(self, config_path)
         self._port = port
@@ -45,27 +63,39 @@ class HttpServer(BaseServer):
         """
         Decorator to check if the user has the required access level.
 
+        Can expose the token, server name and user object to the function.
+        - token: the token used to authenticate the user
+        - server: the server name passed in the request
+        - user: the user object associated with the token
+
         :param access_level: Required access level.
         """
-        def decorator(f):
+        def decorator(f : Callable[[Any], FlaskReturnData] | Callable[[], FlaskReturnData]) -> Callable[[Any], FlaskReturnData] | Callable[[], FlaskReturnData]:
             Logger.set_module("middleware")
-            def wrapper(*args, **kwargs):
+            def wrapper(*args: Any, **kwargs: Any) -> FlaskReturnData:
                 Logger.info(f"Request from {request.remote_addr} with method {request.method} for path {request.path}")
                 try:
                     # check for a server name in parameters (passed with ?server=xxx for GET requests, or in the body for POST requests)
-                    server = None
+                    server : str|None = None
                     if request.method == "GET":
                         server = request.args.get("server", None)
                     elif request.method == "POST":
-                        data : dict[str, Any] = request.get_json()
+                        data : dict[str, JsonAble] | None = request.get_json()
                         if data is not None:
-                            server : str = data.get("server")
+                            _srv = data.get("server")
+                            if not isinstance(_srv, str):
+                                Logger.info("Invalid server name")
+                                return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                            server = _srv
                     Logger.trace(f"Server name: {server}")
 
                     if 'Authorization' not in request.headers:
                         Logger.info("Missing Authorization header")
                         return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
                     token = request.headers.get('Authorization')
+                    if not token:
+                        Logger.info("Missing Authorization header")
+                        return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
                     if not token.startswith("Bearer "):
                         Logger.info("Invalid Authorization header format")
                         return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
@@ -95,7 +125,14 @@ class HttpServer(BaseServer):
                     return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
                 else:
                     Logger.info(f"User {user.username} has the required access level")
-                    return f(*args, **kwargs, token=token) # pass the token to the function
+                    additional_args = {}
+                    if "token" in f.__annotations__:
+                        additional_args["token"] = token
+                    if "server" in f.__annotations__:
+                        additional_args["server"] = server
+                    if "user" in f.__annotations__:
+                        additional_args["user"] = user
+                    return f(*args, **kwargs, **additional_args)
 
             wrapper.__name__ = f.__name__
             return wrapper
@@ -111,13 +148,13 @@ class HttpServer(BaseServer):
             Logger.trace("asking for index, redirecting to /app/")
             return "/redirecting to /app/", HTTP.PERMANENT_REDIRECT, {'Location': '/app/'}
 
-        @self.__app.route('/app/')
+        @self.__app.route('/app/') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         def index():
             Logger.trace("asking for index.html, redirecting to /app/dashboard.html")
             return static_proxy('dashboard.html')
 
-        @self.__app.route('/app/<path:path>')
-        def static_proxy(path):
+        @self.__app.route('/app/<path:path>') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        def static_proxy(path : str):
             try:
                 # send the file to the browser
                 Logger.trace(f"requesting {STATIC_PATH}/{path}")
@@ -137,27 +174,32 @@ class HttpServer(BaseServer):
 
 
     def __config_api_route(self):
+        self.__config_api_route_user()
+        self.__config_api_route_server()
+
+
 
 ###################################################################################################
 # SERVER RELATED ENDPOINTS
 # region: server
 ###################################################################################################
+    def __config_api_route_server(self):
 
-        @self.__app.route('/api/mc_versions', methods=['GET'])
+        @self.__app.route('/api/mc_versions', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def list_mc_versions():
+        def list_mc_versions() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                mc_versions = WebInterface.get_mc_versions()
-                return [str(version) for version in mc_versions]
+                mc_versions = WebInterface.get_mc_versions() # type: ignore
+                return {"data" : [str(version) for version in mc_versions]} #type: ignore
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET'])
+        @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def list_forge_versions(mc_version: str):
+        def list_forge_versions(mc_version: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
                 page_path = WebInterface.get_mc_versions()[Version.from_string(mc_version)]
@@ -175,26 +217,44 @@ class HttpServer(BaseServer):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/servers', methods=['GET'])
+        @self.__app.route('/api/servers', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def list_servers():
+        def list_servers(token : str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                servers = self.config.get("servers", default={}, set=True)
-                return list(servers.keys())
+                servers = self.database.get_servers()
+                result = []
+                for server in servers:
+                    result.append({
+                        "name": server.name,
+                        "mc_version": str(server.mc_version),
+                        "forge_version": str(server.forge_version),
+                        "status": server.status.name
+                    })
+                return result
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/server/<path:server_name>', methods=['GET'])
+        @self.__app.route('/api/server/<path:server_name>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def get_server_info(server_name: str):
+        def get_server_info(server_name: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                servers = self.config.get("servers", default={}, set=True)
-                if server_name in servers:
-                    return servers[server_name]
+                if not self.database.has_server(server_name):
+                    Logger.trace(f"Server {server_name} not found")
+                    return {"message": "Server Not Found"}, HTTP.NOT_FOUND
+                server = self.database.get_server(server_name)
+
+                return {
+                    "name": server.name,
+                    "mc_version": str(server.mc_version),
+                    "forge_version": str(server.forge_version),
+                    "status": server.status.name
+                }
+
+
                 Logger.trace(f"Server {server_name} not found")
                 return {"message": "Server Not Found"}, HTTP.NOT_FOUND
             except Exception as e:
@@ -202,9 +262,9 @@ class HttpServer(BaseServer):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/create_server', methods=['POST'])
+        @self.__app.route('/api/create_server', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.OPERATOR)
-        def create_new_server():
+        def create_new_server() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
                 data = request.get_json()
@@ -232,8 +292,7 @@ class HttpServer(BaseServer):
                     name=server_name,
                     mc_version=mc_version,
                     forge_version=forge_version,
-                    status=ServerStatus.STOPPED,
-                    path=server_path
+                    status=ServerStatus.STOPPED
                 )
                 self.database.add_server(srv)
                 return {"message": "Server Created"}, HTTP.CREATED
@@ -248,10 +307,10 @@ class HttpServer(BaseServer):
 # USER RELATED ENDPOINTS
 # region: user
 ###################################################################################################
-
+    def __config_api_route_user(self):
 
         @self.__app.route('/api/login', methods=['POST'])
-        def login():
+        def login() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
                 data = request.get_json()
@@ -292,7 +351,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/register', methods=['POST'])
-        def register():
+        def register() -> FlaskReturnData:
             print("API request for path: {}".format(request.path))
             Logger.debug(f"API request for path: {request.path}")
             Logger.trace(request.get_json())
@@ -330,7 +389,7 @@ class HttpServer(BaseServer):
 
         @self.__app.route('/api/logout', methods=['POST'])
         @self.request_auth(AccessLevel.USER)
-        def logout(token: str):
+        def logout(token: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
                 self.database.delete_user_token(token)

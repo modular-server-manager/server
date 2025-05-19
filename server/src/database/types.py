@@ -51,11 +51,10 @@ class User:
         )
 
 class McServer:
-    def __init__(self, name: str, mc_version: Version, forge_version: Version, path : str, status: ServerStatus = ServerStatus.STOPPED):
+    def __init__(self, name: str, mc_version: Version, forge_version: Version, status: ServerStatus = ServerStatus.STOPPED):
         self.name = name
         self.mc_version = mc_version
         self.forge_version = forge_version
-        self.path = path
         self.status = status
 
     def __repr__(self):

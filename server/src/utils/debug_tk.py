@@ -12,6 +12,7 @@ class DebugTk(tk.Tk):
         self.title("Debug Tkinter")
         self.geometry("800x600")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        Logger.debug("Debug Tkinter window initialized")
 
     def on_close(self):
         self.close()
@@ -79,3 +80,26 @@ class DebugTk(tk.Tk):
     def mainloop(self, n = 0):
         Logger.debug("Starting Debug Tkinter mainloop")
         return super().mainloop(n)
+
+def ask_for_choice(title: str, message: str, choices: list[str]) -> str:
+    """
+    Ask the user for a choice from a list of options.
+    :param title: Title of the dialog.
+    :param message: Message to display.
+    :param choices: List of choices.
+    :return: The choice selected by the user.
+    """
+    root = tk.Tk()
+    root.title(title)
+    root.geometry("300x200")
+    value = tk.StringVar()
+    value.set(choices[0])
+    label = tk.Label(root, text=message)
+    label.pack(pady=10)
+    # use a combobox to select the choice
+    combo = tk.OptionMenu(root, value, *choices)
+    combo.pack(pady=10)
+    button = tk.Button(root, text="OK", command=root.destroy)
+    button.pack(pady=10)
+    root.mainloop()
+    return value.get()

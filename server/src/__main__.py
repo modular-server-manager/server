@@ -1,6 +1,8 @@
-from .server.server import Server
 import argparse
+
 from gamuLogger import config_argparse, config_logger
+
+from .server.server import Server
 
 BASE_PATH = __file__[:__file__.rfind('/')]  # get the base path of the server
 
@@ -19,7 +21,7 @@ def parse_args():
 def main():
     args = parse_args()
     config_logger(args)
-    server = Server(port=args.port, config_path=args.config)
+    server = Server(config_path=args.config, port=args.port)
     server.start()
 
 if __name__ == "__main__":
