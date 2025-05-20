@@ -1,4 +1,5 @@
 from flask import Flask, request
+import html
 import pathlib
 import os
 from gamuLogger import Logger
@@ -77,13 +78,20 @@ class HttpServer(BaseServer):
         @self.__app.route('/<path:path>')
         def static_proxy(path):
             try:
+                # Validate the path to prevent directory traversal attacks
+                if ".." in path or path.startswith("/"):
+                    Logger.trace(f"Invalid path: {path}")
+                    return "Invalid path", HTTP.BAD_REQUEST
+                
                 # send the file to the browser
                 Logger.trace(f"requesting {STATIC_PATH}/{path}")
-                if not os.path.exists(f"{STATIC_PATH}/{path}"):
+                file_path = pathlib.Path(f"{STATIC_PATH}/{path}")
+                if not file_path.exists():
                     Logger.trace(f"File not found: {STATIC_PATH}/{path}")
                     return "File not found", HTTP.NOT_FOUND
-                content = pathlib.Path(f"{STATIC_PATH}/{path}").read_text()
-                mimetype = guess_type(path)[0]
+                
+                content = html.escape(file_path.read_text())
+                mimetype = guess_type(path)[0] or "text/plain"
                 Logger.trace(f"Serving {STATIC_PATH}{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
             except Exception as e:
