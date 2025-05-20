@@ -307,7 +307,14 @@ class Properties:
 
         :param properties_file: Path to the properties file.
         """
-        with open(properties_file, 'w') as file:
+        # Define the safe root directory
+        safe_root = CONFIG_DIR
+        # Normalize the path and ensure it is within the safe directory
+        normalized_path = os.path.normpath(os.path.join(safe_root, properties_file))
+        if not normalized_path.startswith(safe_root):
+            raise ValueError(f"Invalid path: {properties_file} is outside the allowed directory.")
+
+        with open(normalized_path, 'w') as file:
             file.write("#Minecraft server properties\n")
             for prop in self.properties(mc_version).values():
                 file.write(f"{prop.to_string(mc_version)}\n")
