@@ -65,7 +65,7 @@ export default class API {
             }
         });
         return {
-            data: await await response.json(),
+            data: await response.json(),
             status: response.status,
         }
     }
