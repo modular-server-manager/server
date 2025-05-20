@@ -1,6 +1,7 @@
 # pyright: reportUnusedFunction=false
 # pyright: reportMissingTypeStubs=false
 
+import html
 import os
 import pathlib
 import traceback
@@ -156,6 +157,11 @@ class HttpServer(BaseServer):
         @self.__app.route('/app/<path:path>') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         def static_proxy(path : str):
             try:
+                # Validate the path to prevent directory traversal attacks
+                if ".." in path or path.startswith("/"):
+                    Logger.trace(f"Invalid path: {path}")
+                    return "Invalid path", HTTP.BAD_REQUEST
+
                 # send the file to the browser
                 Logger.trace(f"requesting {STATIC_PATH}/{path}")
                 # Normalize the path and ensure it is within STATIC_PATH
@@ -171,8 +177,8 @@ class HttpServer(BaseServer):
                         Logger.trace(f"File not found: {full_path}")
                         return "File not found", HTTP.NOT_FOUND
 
-                content = pathlib.Path(full_path).read_bytes()
-                mimetype = guess_type(path)[0]
+                content = pathlib.Path(full_path).read_text()
+                mimetype = guess_type(path)[0] or 'text/html'
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
             except Exception as e:
