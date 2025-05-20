@@ -1,4 +1,4 @@
-name: On Push
+name: On Release
 #for every push on any branch
 on:
   release:
@@ -94,6 +94,8 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: package-artifacts-3.12-${{ github.event.release.tag_name }}
+        path: dist
+
 
     - name: Publish release assets
       uses: AButler/upload-release-assets@v3.0
