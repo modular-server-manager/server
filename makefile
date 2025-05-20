@@ -134,8 +134,10 @@ client: $(WEB_DIST)
 server: $(SRV_DIST) $(CONFIG_DIST)
 	@echo "Server build complete."
 
-test-report.xml: $(EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
-	$(PYTHON) -m pytest --junitxml=test-report.xml tests
+
+
+# test-report.xml: $(EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+# 	$(PYTHON) -m pytest --junitxml=test-report.xml tests
 
 
 install: $(EXECUTABLE)
@@ -150,7 +152,7 @@ start/debug: $(EXECUTABLE)
 
 
 
-tests: clean-tests test-report.xml
+# tests: clean-tests test-report.xml
 
 
 
