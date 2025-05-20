@@ -5,3 +5,5 @@ dist/
 build/
 mc_srv_manager/
 *.log
+
+test-report.xml

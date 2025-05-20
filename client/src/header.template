@@ -1,0 +1,12 @@
+<header class="dashboard-header">
+    <button id="dashboard" onclick="window.location.href='dashboard.html'" {{"disabled" if page.name == "dashboard" else ""}}>
+        Dashboard
+    </button>
+    <button id="account" onclick="window.location.href='account.html'" {{"disabled" if page.name == "account" else ""}}>
+        Account Management
+    </button>
+    <button id="disconnect">
+        Disconnect
+    </button>
+</header>
+<script type="module" src="header.js"></script>

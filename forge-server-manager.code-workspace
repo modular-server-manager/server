@@ -1,11 +1,21 @@
 {
 	"folders": [
 		{
+			"name": "forge-server-manager",
 			"path": "."
 		},
 		{
+			"name": "minecraft",
 			"path": "/var/minecraft"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"*.vdf": "vdf",
+			"*.svg": "xml",
+			"*.hta": "html",
+			"*.template": "django-html",
+			"python.h": "c"
+		}
+	}
 }

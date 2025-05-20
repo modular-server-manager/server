@@ -1,0 +1,73 @@
+name: On Push
+#for every push on any branch
+on:
+  push:
+    branches:
+      - "*"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+    - name: Check branch name format
+      id: check_branch
+      run: |
+        if [[ "${GITHUB_REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev-.*$ ]]; then
+          echo "match=true" >> $GITHUB_OUTPUT
+        else
+          echo "match=false" >> $GITHUB_OUTPUT
+        fi
+
+    - uses: actions/checkout@v4
+      if: steps.check_branch.outputs.match == 'true'
+      with:
+        fetch-depth: 0 # Fetch all history for all tags
+
+    - name: install make
+      if: steps.check_branch.outputs.match == 'true'
+      run: sudo apt-get install -y make
+
+    - name: setup Python ${{ matrix.python-version }}
+      if: steps.check_branch.outputs.match == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: install python dependencies
+      if: steps.check_branch.outputs.match == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install build pytest
+
+    - name: setup nodejs
+      if: steps.check_branch.outputs.match == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: install nodejs dependencies
+      if: steps.check_branch.outputs.match == 'true'
+      run: npm install --global sass typescript
+
+    - name: build
+      if: steps.check_branch.outputs.match == 'true'
+      run: make tests VERSION=${{ github.ref_name }}
+
+    - name: publish test report
+      if: steps.check_branch.outputs.match == 'true' && (success() || failure())
+      uses: mikepenz/action-junit-report@v5
+      with:
+        report_paths: 'test-report.xml'
+        include_passed: true
+
+    - name: upload tests server logs
+      if: steps.check_branch.outputs.match == 'true' && (success() || failure())
+      uses: actions/upload-artifact@v4
+      with:
+        name: tests-server-logs
+        path: tests/end-to-end/temp/

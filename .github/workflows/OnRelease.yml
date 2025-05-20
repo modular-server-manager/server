@@ -1,0 +1,102 @@
+name: On Push
+#for every push on any branch
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch all history for all tags
+
+    - name: install make
+      run: sudo apt-get install -y make
+
+    - name: setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: "${{ matrix.python-version }}"
+
+    - name: install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build pytest
+
+    - name: setup nodejs
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: install nodejs dependencies
+      run: npm install --global sass typescript
+
+    - name: build
+      run: make VERSION=${{ github.event.release.tag_name }}
+
+    - name: Upload package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-artifacts-${{ matrix.python-version }}-${{ github.event.release.tag_name }}
+        path: |
+          dist/*.tar.gz
+          dist/*.whl
+
+
+  # tests_integration:
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       python-version: ["3.12", "3.13"]
+
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       fetch-depth: 0 # Fetch all history for all tags
+
+  #   # download artifacts from build job
+  #   - name: download package artifacts
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: package-artifacts-${{ matrix.python-version }}-${{ github.event.release.tag_name }}
+
+  #   - name: install
+
+  #   - name: publish test report
+  #     if: success() || failure()
+  #     uses: mikepenz/action-junit-report@v5
+  #     with:
+  #       report_paths: 'test-report.xml'
+  #       include_passed: true
+
+  #   - name: upload tests server logs
+  #     if: success() || failure()
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: tests-server-logs
+  #       path: tests/end-to-end/temp/
+
+
+  publish_assets:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: download package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: package-artifacts-3.12-${{ github.event.release.tag_name }}
+
+    - name: Publish release assets
+      uses: AButler/upload-release-assets@v3.0
+      with:
+        files: "dist/*"
+        repo-token: ${{ secrets.GITHUB_TOKEN }}

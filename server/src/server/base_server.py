@@ -1,18 +1,19 @@
+import os
 from abc import ABC
 
+from config import JSONConfig
 from gamuLogger import Logger
 
-from ..utils.config import JSONConfig
-from .database import Database
+from ..database.database import Database
 
 Logger.set_module("base_server")
 
 BASE_PATH = __file__[:__file__.rfind('/')] # get the base path of the server
 
-STATIC_PATH = f'{BASE_PATH}/client'
+STATIC_PATH = f'{os.path.dirname(BASE_PATH)}/client'
 
 class BaseServer(ABC):
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str):
         """
         Initialize the BaseServer class.
         :param config_path: Path to the configuration file.
