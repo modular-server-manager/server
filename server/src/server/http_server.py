@@ -22,6 +22,7 @@ from ..forge.interface import ForgeServer
 from ..forge.web_interface import WebInterface
 from ..utils.hash import hash_string, verify_hash
 from ..utils.misc import str2bool, time_from_now
+from ..utils.regex import RE_MC_SERVER_NAME
 from .base_server import STATIC_PATH, BaseServer
 
 Logger.set_module("http_server")
@@ -288,6 +289,18 @@ class HttpServer(BaseServer):
                 if not server_name or not mc_version or not forge_version:
                     Logger.trace("Missing parameters for create_server. got name: {}, path: {}, mc_version: {}, forge_version: {}".format(server_name, server_path, mc_version, forge_version))
                     return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
+
+                if not RE_MC_SERVER_NAME.match(server_name):
+                    Logger.trace(f"Invalid server name: {server_name}")
+                    return {"message": "Invalid server name"}, HTTP.BAD_REQUEST
+
+                if not Version.is_valid_string(mc_version):
+                    Logger.trace(f"Invalid mc_version: {mc_version}")
+                    return {"message": "Invalid mc_version"}, HTTP.BAD_REQUEST
+
+                if not Version.is_valid_string(forge_version):
+                    Logger.trace(f"Invalid forge_version: {forge_version}")
+                    return {"message": "Invalid forge_version"}, HTTP.BAD_REQUEST
 
                 mc_version = Version.from_string(mc_version)
                 forge_version = Version.from_string(forge_version)
