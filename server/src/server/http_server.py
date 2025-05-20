@@ -158,13 +158,20 @@ class HttpServer(BaseServer):
             try:
                 # send the file to the browser
                 Logger.trace(f"requesting {STATIC_PATH}/{path}")
-                if not os.path.exists(f"{STATIC_PATH}/{path}"):
-                    if os.path.exists(f"{STATIC_PATH}/{path}.html"):
-                        path = f"{path}.html"
+                # Normalize the path and ensure it is within STATIC_PATH
+                full_path = os.path.normpath(os.path.join(STATIC_PATH, path))
+                if not full_path.startswith(STATIC_PATH):
+                    Logger.trace(f"Invalid path traversal attempt: {path}")
+                    return "Invalid path", HTTP.BAD_REQUEST
+
+                if not os.path.exists(full_path):
+                    if os.path.exists(f"{full_path}.html"):
+                        full_path = f"{full_path}.html"
                     else:
-                        Logger.trace(f"File not found: {STATIC_PATH}/{path}")
+                        Logger.trace(f"File not found: {full_path}")
                         return "File not found", HTTP.NOT_FOUND
-                content = pathlib.Path(f"{STATIC_PATH}/{path}").read_bytes()
+
+                content = pathlib.Path(full_path).read_bytes()
                 mimetype = guess_type(path)[0]
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
