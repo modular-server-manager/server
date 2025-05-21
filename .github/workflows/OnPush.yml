@@ -5,6 +5,10 @@ on:
     branches:
       - "*"
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   tests:
     runs-on: ubuntu-latest
