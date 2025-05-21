@@ -24,7 +24,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/forge/data.xml
+SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/data.xml
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)
@@ -106,15 +106,19 @@ mc_srv_manager/%: server/src/%
 	@echo "Copying $< to $@"
 	@cp $< $@
 
-dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
-	$(PYTHON) -m build --outdir dist
+dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
+	mkdir -p $(TEMP_DIR)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION_STR)
+	mkdir -p dist
+	mv $(TEMP_DIR)/*.whl dist/$(WHEEL)
+	rm -rf $(TEMP_DIR)
 	@echo "Building wheel package complete."
 
 dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
 	mkdir -p $(TEMP_DIR)
 	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION_STR)
 	mkdir -p dist
-	mv $(TEMP_DIR)/*.tar.gz dist/
+	mv $(TEMP_DIR)/*.tar.gz dist/$(ARCHIVE)
 	rm -rf $(TEMP_DIR)
 	@echo "Building archive package complete."
 
@@ -144,7 +148,8 @@ install: $(EXECUTABLE)
 
 start: $(EXECUTABLE)
 	@echo "Starting server..."
-	@$(EXECUTABLE) --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json
+# --module-level http_server:DEBUG
 
 start/debug: $(EXECUTABLE)
 	@echo "Starting debug tool..."

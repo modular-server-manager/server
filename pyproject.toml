@@ -37,18 +37,22 @@ dependencies = [
 
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
-mc-srv-manager-install = "mc_srv_manager.forge.installer:main"
+mc-srv-manager-install = "mc_srv_manager.minecraft.forge.installer:main"
 mc-srv-manager-local-debug = "mc_srv_manager.debug_interface:main"
 
 [tool.setuptools]
 packages = ["mc_srv_manager",
-            "mc_srv_manager.server",
-            "mc_srv_manager.forge",
-            "mc_srv_manager.utils",
-            "mc_srv_manager.database",
-            "mc_srv_manager.client",
-            "mc_srv_manager.client.assets"]
-package-data = { "mc_srv_manager" = ["client/**", "config.json", "forge/data.xml"] }
+                "mc_srv_manager.user_interface",
+                    "mc_srv_manager.user_interface.web_server",
+                    "mc_srv_manager.user_interface.tk_window",
+                "mc_srv_manager.minecraft",
+                    "mc_srv_manager.minecraft.forge",
+                    "mc_srv_manager.minecraft.vanilla",
+                "mc_srv_manager.utils",
+                "mc_srv_manager.database",
+                "mc_srv_manager.client",
+                    "mc_srv_manager.client.assets"]
+package-data = { "mc_srv_manager" = ["client/**", "config.json", "minecraft/data.xml"] }
 include-package-data = true
 
 [tool.pytest.ini_options]

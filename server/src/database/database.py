@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
+from typing import Dict
 
 from gamuLogger import Logger
 from version import Version
@@ -10,7 +11,19 @@ from .types import AccessLevel, AccessToken, McServer, ServerStatus, User
 Logger.set_module("database")
 
 class Database:
-    def __init__(self, db_file):
+    __instances : Dict[str, 'Database'] = {}
+
+    def __new__(cls, db_file: str):
+        """
+        Singleton pattern to ensure only one instance of the database exists.
+        :param db_file: The path to the database file.
+        :return: The instance of the database.
+        """
+        if db_file not in cls.__instances:
+            cls.__instances[db_file] = super(Database, cls).__new__(cls)
+        return cls.__instances[db_file]
+
+    def __init__(self, db_file : str):
         Logger.debug(f"Connecting to database {db_file}")
         os.makedirs(os.path.dirname(db_file), exist_ok=True)
         try:
@@ -29,9 +42,6 @@ class Database:
         """
         if self.connection:
             self.connection.close()
-            Logger.debug("Database connection closed")
-        else:
-            Logger.debug("No database connection to close")
 
     def __del__(self):
         """

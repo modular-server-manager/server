@@ -5,15 +5,15 @@ import socketio
 from eventlet import wsgi
 from gamuLogger import Logger
 
-from ..utils.misc import NoLog
+from ...utils.misc import NoLog
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 
 Logger.set_module("server")
 
-class Server(HttpServer, WebSocketServer):
+class WebServer(HttpServer, WebSocketServer):
     def __init__(self, config_path: str, port: int = 5000):
-        Logger.trace("Initializing Server")
+        Logger.trace("Initializing WebServer")
         HttpServer.__init__(self, config_path, port)
         WebSocketServer.__init__(self, config_path)
 
@@ -25,7 +25,7 @@ class Server(HttpServer, WebSocketServer):
         except KeyboardInterrupt:
             Logger.info("HTTP server stopped by user")
         except Exception as e:
-            Logger.fatal(f"Server encountered an error: {e}")
+            Logger.fatal(f"WebServer encountered an error: {e}")
             sys.exit(1)
         finally:
             sys.stdout.write("\r")

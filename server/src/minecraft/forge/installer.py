@@ -4,7 +4,7 @@ import subprocess
 from gamuLogger import Logger
 from version import Version
 
-from .properties import Properties
+from ..properties import Properties
 
 Logger.set_module("installer")
 

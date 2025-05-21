@@ -8,7 +8,7 @@ import traceback
 
 from gamuLogger import Logger
 
-Logger.set_module("forge server.rcon socket")
+Logger.set_module("minecraft.rcon socket")
 
 Packet = collections.namedtuple("Packet", ["id", "type", "data"])
 

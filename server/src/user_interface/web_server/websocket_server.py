@@ -20,22 +20,22 @@ class WebSocketServer(BaseServer):
         @self.__sio.event
         def disconnect(sid):
             Logger.info(f"Client disconnected: {sid}")
-            
+
     def send(self, event: str, data: dict):
         """
         Send a message to all connected clients.
-        
+
         :param event: The event name to send.
         :param data: The data to send with the event.
         """
         self.__sio.emit(event, data)
         Logger.debug(f"Sent event '{event}' with data: {data}")
-        
-        
+
+
     def _get_sio(self):
         """
         Get the SocketIO server instance.
-        
+
         :return: The SocketIO server instance.
         """
         return self.__sio

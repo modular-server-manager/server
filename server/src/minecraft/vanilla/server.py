@@ -2,22 +2,24 @@ import atexit
 import re
 import subprocess
 import threading as th
+from datetime import timedelta
 from typing import Callable
 
+from cache import Cache
 from gamuLogger import Logger
 
-from ..database.types import ServerStatus  # same enum for consistency
-from .properties import Properties
-from .rcon import RCON
+from ...database.types import ServerStatus  # same enum for consistency
+from ..properties import Properties
+from ..rcon import RCON
 
 RE_LOG_TEXT = re.compile(r"^.*\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[.*/([A-Z]+)\] \[.*/(.*)\]: (.*)$") # first match is a color code, second match is the text
 
-Logger.set_module("forge server.server manager")
+Logger.set_module("minecraft.server manager")
 
 
-class ForgeServer:
+class MinecraftServer:
     """
-    Class to manage a Minecraft Forge server.
+    Class to manage a Minecraft server.
     """
 
     def __init__(self,
@@ -51,7 +53,7 @@ class ForgeServer:
         """
         Start the Minecraft Forge server./
         """
-        Logger.set_module(f"forge server.{self.name}")
+        Logger.set_module(f"minecraft.{self.name}")
         process = subprocess.Popen(
             ["./run.sh", "--nogui"],
             cwd=self.installation_dir,
@@ -142,6 +144,21 @@ class ForgeServer:
         Logger.warning("RCON connection not established. Cannot send command.")
         return None
 
+    def reload_world(self):
+        """
+        Reload the world on the server.
+        """
+        return self.send_command("reload")
+
+    def get_status(self):
+        """
+        Get the status of the server.
+        """
+        return self.__ServerStatus
+
+
+
+    @Cache(expire_in=timedelta(seconds=2))
     def get_player_list(self):
         """
         Get the list of players currently online on the server.
@@ -158,20 +175,24 @@ class ForgeServer:
             Logger.warning("No players online.")
             return []
 
-    def reload_world(self):
-        """
-        Reload the world on the server.
-        """
-        return self.send_command("reload")
-
-    def get_status(self):
-        """
-        Get the status of the server.
-        """
-        return self.__ServerStatus
-
-    def get_seed(self):
+    @Cache(expire_in=timedelta(hours=1))
+    def get_seed(self) -> str:
         """
         Get the seed of the world on the server.
         """
-        return self.send_command("seed")
+        if response := self.send_command("seed"):
+            try:
+                seed = response.split(":")[1].strip()
+                if seed.startswith("[") and seed.endswith("]"):
+                    seed = seed[1:-1]
+                seed = seed.strip()
+                if not seed.isdigit():
+                    raise ValueError(f"Seed is not a number: {seed}")
+            except Exception as e:
+                Logger.error(f"Error parsing seed: {e}")
+                Logger.error(f"Response: '{response}'")
+                return ""
+            return seed
+        else:
+            Logger.warning("No seed found.")
+            return ""

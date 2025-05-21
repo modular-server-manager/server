@@ -8,7 +8,7 @@ from version import Version
 
 CONFIG_DIR = os.path.dirname(__file__)
 
-Logger.set_module('forge.properties')
+Logger.set_module('minecraft.properties')
 
 class PropertyOption:
     def __init__(self, name: str, value: str, until: Version = None, introduced: Version = None):

@@ -15,14 +15,14 @@ from gamuLogger import Logger
 from http_code import HttpCode as HTTP
 from version import Version
 
-from ..database.types import (AccessLevel, AccessToken, McServer, ServerStatus,
-                              User)
-from ..forge import installer
-from ..forge.interface import ForgeServer
-from ..forge.web_interface import WebInterface
-from ..utils.hash import hash_string, verify_hash
-from ..utils.misc import str2bool, time_from_now
-from ..utils.regex import RE_MC_SERVER_NAME
+from ...database.types import (AccessLevel, AccessToken, McServer,
+                               ServerStatus, User)
+from ...minecraft.forge import installer
+from ...minecraft.forge.server import ForgeServer
+from ...minecraft.forge.web_interface import WebInterface
+from ...utils.hash import hash_string, verify_hash
+from ...utils.misc import str2bool, time_from_now
+from ...utils.regex import RE_MC_SERVER_NAME
 from .base_server import STATIC_PATH, BaseServer
 
 Logger.set_module("http_server")
@@ -61,7 +61,7 @@ class HttpServer(BaseServer):
         """
         return self.__app
 
-    def request_auth(self, access_level: AccessLevel):
+    def request_auth(self, access_level: AccessLevel, _global: bool = False) -> Callable[[T], T]:
         """
         Decorator to check if the user has the required access level.
 
@@ -69,6 +69,8 @@ class HttpServer(BaseServer):
         - token: the token used to authenticate the user
         - server: the server name passed in the request
         - user: the user object associated with the token
+
+        **The type hints for the function must be set for the decorator to work properly.**
 
         :param access_level: Required access level.
         """
@@ -84,11 +86,14 @@ class HttpServer(BaseServer):
                     elif request.method == "POST":
                         data : dict[str, JsonAble] | None = request.get_json()
                         if data is not None:
-                            _srv = data.get("server")
-                            if not isinstance(_srv, str):
-                                Logger.info("Invalid server name")
-                                return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
-                            server = _srv
+                            if _global:
+                                server = None
+                            else:
+                                _srv = data.get("server")
+                                if not isinstance(_srv, str):
+                                    Logger.info("Invalid server name")
+                                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                                server = _srv
                     Logger.trace(f"Server name: {server}")
 
                     if 'Authorization' not in request.headers:
@@ -112,11 +117,14 @@ class HttpServer(BaseServer):
                         return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
 
                     user = self.database.get_user(access_token.username)
-                    if server is None:
+                    if _global:
                         if user.global_access_level < access_level:
                             Logger.info(f"User {user.username} does not have the required access level")
                             return {"message": "Forbidden"}, HTTP.FORBIDDEN
                     else:
+                        if not server:
+                            Logger.info("Missing server name")
+                            return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
                         server_access_level = self.database.get_user_access(server, user.username)
                         if server_access_level < access_level:
                             Logger.info(f"User {user.username} does not have the required access level for server {server}")
@@ -178,7 +186,7 @@ class HttpServer(BaseServer):
                         Logger.trace(f"File not found: {full_path}")
                         return "File not found", HTTP.NOT_FOUND
 
-                content = pathlib.Path(full_path).read_text()
+                content = pathlib.Path(full_path).read_bytes()
                 mimetype = guess_type(path)[0] or 'text/html'
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
@@ -200,7 +208,7 @@ class HttpServer(BaseServer):
     def __config_api_route_server(self):
 
         @self.__app.route('/api/mc_versions', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def list_mc_versions() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -212,7 +220,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def list_forge_versions(mc_version: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -232,7 +240,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/servers', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def list_servers(token : str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -252,7 +260,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/server/<path:server_name>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def get_server_info(server_name: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -277,7 +285,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/create_server', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
-        @self.request_auth(AccessLevel.OPERATOR)
+        @self.request_auth(AccessLevel.OPERATOR, _global=True)
         def create_new_server() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -414,7 +422,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/logout', methods=['POST'])
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def logout(token: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -426,7 +434,7 @@ class HttpServer(BaseServer):
                 return {"message" : "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/delete_user', methods=['POST'])
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def delete_user(token: str): # delete the user associated with the token
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -447,8 +455,8 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user', methods=['GET'])
-        @self.request_auth(AccessLevel.USER)
-        def get_user_info(token):
+        @self.request_auth(AccessLevel.USER, _global=True)
+        def get_user_info(token : str):
             Logger.trace(f"API request for path: {request.path}")
             try:
                 if not token:
@@ -473,7 +481,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user/update_password', methods=['POST'])
-        @self.request_auth(AccessLevel.USER)
+        @self.request_auth(AccessLevel.USER, _global=True)
         def update_password(token: str): # update the password of the user associated with the token
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -495,7 +503,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user/<path:username>', methods=['GET'])
-        @self.request_auth(AccessLevel.OPERATOR)
+        @self.request_auth(AccessLevel.OPERATOR, _global=True)
         def get_user_info_by_username(username: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -515,7 +523,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user/<path:username>/global_access', methods=['POST'])
-        @self.request_auth(AccessLevel.OPERATOR)
+        @self.request_auth(AccessLevel.OPERATOR, _global=True)
         def update_user_global_access(username: str): # update the global access level of the user
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -535,7 +543,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user/<path:username>/password', methods=['POST'])
-        @self.request_auth(AccessLevel.OPERATOR)
+        @self.request_auth(AccessLevel.OPERATOR, _global=True)
         def update_user_password(username: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -555,7 +563,7 @@ class HttpServer(BaseServer):
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
         @self.__app.route('/api/user/<path:username>/access', methods=['POST'])
-        @self.request_auth(AccessLevel.OPERATOR)
+        @self.request_auth(AccessLevel.OPERATOR, _global=True)
         def update_user_access(username: str): # update the access level of the user for a specific server
             Logger.trace(f"API request for path: {request.path}")
             try:
