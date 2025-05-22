@@ -29,10 +29,11 @@ dependencies = [
     "eventlet==0.39.1",
     "greenlet==3.2.1",
     "python-socketio==5.13.0",
-    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/cache-1.0.4-py3-none-any.whl",
-    "config @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/config-1.0.4-py3-none-any.whl",
-    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/http_code-1.0.4-py3-none-any.whl",
-    "version @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/version-1.0.4-py3-none-any.whl"
+    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.0/cache-1.1.0-py3-none-any.whl",
+    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.0/config-1.1.0-py3-none-any.whl",
+    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.0/http_code-1.1.0-py3-none-any.whl",
+    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.0/version-1.1.0-py3-none-any.whl",
+    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.0/singleton-1.1.0-py3-none-any.whl"
 ]
 
 [project.scripts]
