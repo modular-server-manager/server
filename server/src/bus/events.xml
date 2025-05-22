@@ -1,135 +1,204 @@
 <?xml version="1.0" ?>
 <events>
-    <namespace name="SERVER_TO_CLIENT">
-        <namespace name="SERVER">
-            <event name="SERVER_STARTING" id="0x0001">
-                <args>
-                    <arg name="server_id" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_STARTED" id="0x0002">
-                <args>
-                    <arg name="server_id" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_STOPPING" id="0x0003">
-                <args>
-                    <arg name="server_id" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_STOPPED" id="0x0004">
-                <args>
-                    <arg name="server_id" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_ERROR" id="0x0005">
-                <args>
-                    <arg name="server_id" type="int" />
-                    <arg name="error_message" type="string" />
-                </args>
-            </event>
-        </namespace>
-        <namespace name="PLAYERS">
-            <event name="PLAYER_JOINED" id="0x0006">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_LEFT" id="0x0007">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_KICKED" id="0x0008">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_BANNED" id="0x0009">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-        </namespace>
-        <namespace name="CONSOLE">
-            <event name="NEW_CHAT_MESSAGE" id="0x000A">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="message" type="string" />
-                </args>
-            </event>
-            <event name="NEW_LOGS" id="0x000B">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="command" type="string" />
-                </args>
-            </event>
-        </namespace>
+    <namespace name="SERVER">
+        <event name="STARTING" id="0x0001">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="STARTED" id="0x0002">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="STOPPING" id="0x0003">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="STOPPED" id="0x0004">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="CRASHED" id="0x0005">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+
+        <event name="START" id="0x0006">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="STOP" id="0x0007">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="RESTART" id="0x0008">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+
+        <event name="CREATE" id="0x0009">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="server_type" type="str" />
+                <arg name="server_path" type="str" />
+                <arg name="autostart" type="bool" />
+                <arg name="mc_version" type="str" />
+                <arg name="ram" type="int" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="DELETE" id="0x000A">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="RENAME" id="0x000B">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="new_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
     </namespace>
-    <namespace name="CLIENT_TO_SERVER">
-        <namespace name="SERVER">
-            <event name="SERVER_START" id="0x000C">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_STOP" id="0x000D">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-            <event name="SERVER_RESTART" id="0x000E">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-        </namespace>
-        <namespace name="PLAYERS">
-            <event name="PLAYER_KICK" id="0x000F">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_BAN" id="0x0010">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                    <arg name="reason" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_PARDON" id="0x0011">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                    <arg name="player_name" type="string" />
-                </args>
-            </event>
-            <event name="PLAYER_LIST" id="0x0012">
-                <args>
-                    <arg name="timestamp" type="int" />
-                    <arg name="server_name" type="string" />
-                </args>
-            </event>
-        </namespace>
+
+    <namespace name="CONSOLE">
+        <event name="MESSAGE_RECEIVED" id="0x0101">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="from" type="str" />
+                <arg name="message" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="LOG_RECEIVED" id="0x0102">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="content" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="SEND_MESSAGE" id="0x0103">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="from" type="str" />
+                <arg name="message" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="SEND_COMMAND" id="0x0104">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="command" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+    </namespace>
+
+    <namespace name="PLAYERS">
+        <event name="JOINED" id="0x0201">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="LEFT" id="0x0202">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="KICKED" id="0x0203">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="BANNED" id="0x0204">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="PARDONED" id="0x0205">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+
+        <event name="KICK" id="0x0206">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+                <arg name="reason" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="BAN" id="0x0207">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+                <arg name="reason" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="PARDON" id="0x0208">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+                <arg name="player_name" type="str" />
+            </args>
+            <return name="none" type="None" />
+        </event>
+        <event name="LIST" id="0x0209">
+            <args>
+                <arg name="timestamp" type="int" />
+                <arg name="server_name" type="str" />
+            </args>
+            <return type="list[str]" />
+        </event>
     </namespace>
 </events>
