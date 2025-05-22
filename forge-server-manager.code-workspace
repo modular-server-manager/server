@@ -7,6 +7,9 @@
 		{
 			"name": "minecraft",
 			"path": "/var/minecraft"
+		},
+		{
+			"path": "../forge-server-manager.wiki"
 		}
 	],
 	"settings": {
