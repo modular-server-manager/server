@@ -24,7 +24,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/data.xml
+SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/properties.xml server/src/bus/events.xml
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)

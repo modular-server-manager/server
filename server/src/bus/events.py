@@ -1,21 +1,57 @@
 import os
+import sys
 from typing import List
 from xml.etree import ElementTree as ET
 
+from gamuLogger import Logger
 from singleton import Singleton
+
+Logger.set_module("bus.events")
 
 __FILE_DIR__ = os.path.dirname(__file__)
 
+FILE_SEPARATOR = "\x1c"    # ASCII File Separator (FS) character
+GROUP_SEPARATOR = "\x1d"   # ASCII Group Separator (GS) character
+RECORD_SEPARATOR = "\x1e"  # ASCII Record Separator (RS) character
+UNIT_SEPARATOR = "\x1f"    # ASCII Unit Separator (US) character
+
+
 class EventArg:
-    def __init__(self, name: str, type: str):
+    type_map = {
+        "int": int,
+        "float": float,
+        "str": str,
+        "string": str,
+        "bool": bool,
+        "list[str]": lambda s : s.split(UNIT_SEPARATOR),
+        "list": lambda s : s.split(UNIT_SEPARATOR),
+    }
+
+    def __init__(self, name: str, type: str, id : int):
         self.name = name
+        if type not in self.type_map:
+            raise ValueError(f"Unsupported type {type} for argument {name}")
         self.type = type
+        self.id = id
 
     def __repr__(self):
-        return f"EventArg(name={self.name}, type={self.type})"
+        return f"EventArg(name={self.name}, type={self.type}, id={self.id})"
 
     def __str__(self):
         return f"{self.name}: {self.type}"
+
+    def convert(self, value: str):
+        if self.type == "int":
+            return int(value)
+        if self.type == "float":
+            return float(value)
+        if self.type in ("str", "string"):
+            return value
+        if self.type == "bool":
+            return value.lower() in {"true", "1", "yes", "on"}
+        if self.type in ("list[str]", "list"):
+            return value.split(UNIT_SEPARATOR)
+        raise TypeError(f"Unsupported type {self.type} for argument {self.name}")
 
 
 class Event:
@@ -24,6 +60,27 @@ class Event:
         self.id = id
         self.args = args
         self.return_type = return_type
+
+    def return_event(self):
+        """
+        Returns a new Event instance that represents the return type of this event.
+        """
+        if self.id > 65535 or self.name.endswith(".RETURN"):
+            raise ValueError(
+                f"This event {self.name} is already a return event or has an ID that exceeds the maximum allowed value."
+            )
+
+        if self.return_type == "None":
+            raise ValueError(
+                f"This event {self.name} does not have a return type defined."
+            )
+
+        return Event(
+            name=f"{self.name}.RETURN",
+            id=self.id + 65536,  # Increment ID by 65536 so in hexa : 0x0209 (0x00209) will be 0x10209
+            args=[EventArg(name="result", type=self.return_type, id=1)],
+            return_type=None
+        )
 
     def __repr__(self):
         return f"Event(name={self.name}, id={self.id}, args={self.args}, return_type={self.return_type})"
@@ -41,6 +98,61 @@ class Event:
                 return arg
         raise KeyError(f"Argument {item} not found in event {self.name}")
 
+    @staticmethod
+    def encode(event : 'Event', **kwargs) -> str:
+        result = f"{event.id:05x}{FILE_SEPARATOR}"
+        args_list : list[str] = []
+        for arg in event.args:
+            if arg.name not in kwargs:
+                raise ValueError(f"Missing argument {arg.name} for event {event.name}")
+            value = kwargs[arg.name]
+            if isinstance(value, str):
+                value = value.replace(FILE_SEPARATOR, "").replace(GROUP_SEPARATOR, "") #ensure no separators in string values
+            elif isinstance(value, int):
+                value = str(value)
+            elif isinstance(value, float):
+                value = f"{value:.6f}"
+            elif isinstance(value, bool):
+                value = "true" if value else "false"
+            elif isinstance(value, list):
+                if arg.type in ("list[str]", "list"):
+                    value = UNIT_SEPARATOR.join(value)
+                else:
+                    raise TypeError(f"Unsupported list type {arg.type} for argument {arg.name} in event {event.name}")
+            else:
+                raise TypeError(f"Unsupported type {type(value)} for argument {arg.name} in event {event.name}")
+            args_list.append(f"{arg.id:02x}{RECORD_SEPARATOR}{value}")
+        result += GROUP_SEPARATOR.join(args_list)
+        return result
+
+    @staticmethod
+    def decode(encoded: str) -> tuple['Event', dict[str, str]]:
+        parts = encoded.split(FILE_SEPARATOR)
+        if len(parts) < 2:
+            raise ValueError("Encoded event string is malformed")
+        event_id = int(parts[0], 16)
+        args_str = parts[1].split(GROUP_SEPARATOR)
+
+        event = Events.get_event(event_id)
+
+        args = {}
+        for arg_str in args_str:
+            if not arg_str:
+                continue
+            arg_parts = arg_str.split(RECORD_SEPARATOR)
+            if len(arg_parts) != 2:
+                raise ValueError(f"Malformed argument string: {arg_str}")
+            arg_id = int(arg_parts[0], 16)
+            value = arg_parts[1]
+            for arg in event.args:
+                if arg.id == arg_id:
+                    typed_value = arg.convert(value)
+                    args[arg.name] = typed_value
+                    break
+            else:
+                raise KeyError(f"Argument with ID {arg_id} not found in event {event.name}")
+        return event, args
+
 class EventsType(Singleton):
 
     def __init__(self, xml_path: str):
@@ -48,7 +160,10 @@ class EventsType(Singleton):
         self.__load_events(xml_path)
 
     def __load_events(self, xml_path: str):
-        tree = ET.parse(xml_path)
+        try:
+            tree = ET.parse(xml_path)
+        except ET.ParseError as e:
+            raise ValueError(f"Failed to parse XML file {xml_path}: {e}") from None
         root = tree.getroot()
         for namespace in root.findall('namespace'):
             self.__parse_namespace(namespace, namespace.get('name'))
@@ -65,7 +180,7 @@ class EventsType(Singleton):
             if not event_id:
                 raise ValueError(f"Event {event_name} does not have an ID")
             args = [
-                EventArg(arg.get('name'), arg.get('type'))
+                EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16))
                 for arg in event.find('args').findall('arg')
             ]
             return_type = event.find('return').get('type')
@@ -101,18 +216,58 @@ class EventsType(Singleton):
         return list(self.events.keys())
 
     def get_event(self, event_id: int) -> Event:
+        if event_id > 65535:
+            return self.get_event(event_id - 65536).return_event()
         if event_id in self.events:
             return self.events[event_id]
         raise KeyError(f"Event {event_id} not found")
 
-Events = EventsType(
-    os.path.join(
-        __FILE_DIR__,
-        "events.xml"
+
+try:
+    Events = EventsType(
+        os.path.join(
+            __FILE_DIR__,
+            "events.xml"
+        )
     )
-)
+except Exception as e:
+    Logger.fatal(f"Failed to load events from XML file: {e}")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
-    for e in Events:
-        print(f"{e.id:<5d}\t{e}")
+    from datetime import datetime
+
+    # for e in Events:
+    #     print(f"{e.id:<5d}\t{e}")
+
+# try encode
+    event = Events["SERVER.CREATE"]
+    encoded = Event.encode(
+        event,
+        timestamp=int(datetime.now().timestamp()),
+        server_name="TestServer",
+        server_type="forge",
+        server_path="/this/is/a/very/long/path",
+        autostart="off",
+        mc_version="1.20.1",
+        ram="2048"
+    )
+
+    for c in encoded:
+        print(f"{ord(c):02x}", end=" ")
+    print()
+    for c in encoded:
+        if ord(c) < 32 or ord(c) > 126:
+            print("  ", end=" ")
+        else:
+            print(f"{c} ", end=" ")
+    print()
+    print(len(encoded), "bytes")
+
+    # try decode
+    decoded_event, args = Event.decode(encoded)
+    print(f"Decoded event: {decoded_event}")
+    print("Arguments:")
+    for arg_name, value in args.items():
+        print(f"{arg_name}: {value} ({type(value).__name__})")
