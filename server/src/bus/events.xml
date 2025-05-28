@@ -114,6 +114,12 @@
             </args>
             <return type="None" />
         </event>
+        <event name="LIST" id="0x000F">
+            <args>
+                <arg name="timestamp" type="int" id="0x01" />
+            </args>
+            <return type="json" />
+        </event>
     </namespace>
 
     <namespace name="CONSOLE">
@@ -234,14 +240,14 @@
             <args>
                 <arg name="timestamp" type="int" id="0x01" />
             </args>
-            <return type="list[str]" />
+            <return type="list[Version]" />
         </event>
         <event name="FORGE" id="0x0302">
             <args>
                 <arg name="timestamp" type="int" id="0x01" />
-                <arg name="mc_version" type="str" id="0x02" />
+                <arg name="mc_version" type="Version" id="0x02" />
             </args>
-            <return type="list[str]" />
+            <return type="Dict[Version, Dict[str, Any]]" />
         </event>
     </namespace>
 </events>

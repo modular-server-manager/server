@@ -7,6 +7,7 @@ from typing import Any, Callable
 from gamuLogger import Logger
 from singleton import Singleton
 
+from ..utils.misc import is_types_equals
 from .bus_data import BusData
 from .events import Event, Events
 
@@ -26,6 +27,7 @@ class Bus(Singleton):
 
         self.__memory_size = data.memory_size
         self.__empty_string = data.empty_string  # Define an empty string of max length
+        self.__max_string_length = data.max_string_length
 
         self.__listen = False
         self.__thread = th.Thread(target=self.__read_incoming, daemon=True, name="BusListener")
@@ -49,12 +51,12 @@ class Bus(Singleton):
         annotations = callback.__annotations__
         if "return" not in annotations:
             raise ValueError(f"Callback for event {event.name} is missing return type annotation")
-        if str(annotations["return"]) != event.return_type:
-            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {annotations.get('return')})")
+        if not is_types_equals(str(annotations["return"]), event.return_type):
+            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {annotations['return']})")
         for arg in event.args:
             if arg.name not in annotations:
                 raise ValueError(f"Callback for event {event.name} is missing argument {arg.name}")
-            if annotations[arg.name].__name__ != arg.type:
+            if not is_types_equals(str(annotations[arg.name].__name__), arg.type):
                 raise ValueError(f"Callback for event {event.name} has argument {arg.name} with wrong type (expected {arg.type}, got {annotations[arg.name].__name__})")
         for arg_name, arg_type in annotations.items():
             if arg_name == "return":
@@ -107,6 +109,8 @@ class Bus(Singleton):
                     kwargs["timestamp"] = int(datetime.now().timestamp())
 
         encoded = Event.encode(event, **kwargs)
+        if len(encoded) > self.__max_string_length:
+            raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded)} bytes > {self.__max_string_length} bytes")
         Logger.debug(f"Triggering event {event.name} with arguments: {kwargs}")
         Logger.trace(f"Encoded data: {encoded} (Length: {len(encoded)} bytes)")
         for i in range(len(self.__shared_list_write)):
@@ -140,7 +144,7 @@ class Bus(Singleton):
                             if result is not None and event.return_type != "None":
                                 self.trigger(event.return_event(), result=result)
                 except Exception as e:
-                    Logger.error(f"Error processing message {msg}: {e}")
+                    Logger.error(f"Error processing message {event} with {args}: {e}")
             self.__move_forward()
             time.sleep(0.01)
         Logger.info("Bus listening stopped")

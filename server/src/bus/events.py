@@ -1,10 +1,13 @@
 import os
 import sys
-from typing import List
+from json import dumps as json_dumps
+from json import loads as json_loads
+from typing import Any, Callable, List
 from xml.etree import ElementTree as ET
 
 from gamuLogger import Logger
 from singleton import Singleton
+from version import Version
 
 Logger.set_module("bus.events")
 
@@ -16,21 +19,20 @@ RECORD_SEPARATOR = "\x1e"  # ASCII Record Separator (RS) character
 UNIT_SEPARATOR = "\x1f"    # ASCII Unit Separator (US) character
 
 
+
 class EventArg:
-    type_map = {
-        "int": int,
-        "float": float,
-        "str": str,
-        "string": str,
-        "bool": bool,
-        "list[str]": lambda s : s.split(UNIT_SEPARATOR),
-        "list": lambda s : s.split(UNIT_SEPARATOR),
+    type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
+        "int":          (int, str),
+        "float":        (float, str),
+        "str":          (str, str),
+        "string":       (str, str),
+        "Version":      (Version.from_string, str),
+        "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
+        "__default":    (json_loads, lambda v: json_dumps(v, ensure_ascii=False, separators=(',', ':'), default=str)),
     }
 
     def __init__(self, name: str, type: str, id : int):
         self.name = name
-        if type not in self.type_map:
-            raise ValueError(f"Unsupported type {type} for argument {name}")
         self.type = type
         self.id = id
 
@@ -41,18 +43,24 @@ class EventArg:
         return f"{self.name}: {self.type}"
 
     def convert(self, value: str):
-        if self.type == "int":
-            return int(value)
-        if self.type == "float":
-            return float(value)
-        if self.type in ("str", "string"):
-            return value
-        if self.type == "bool":
-            return value.lower() in {"true", "1", "yes", "on"}
-        if self.type in ("list[str]", "list"):
-            return value.split(UNIT_SEPARATOR)
-        raise TypeError(f"Unsupported type {self.type} for argument {self.name}")
+        if self.type in self.type_map:
+            from_string, _ = self.type_map[self.type]
+        else:
+            from_string, _ = self.type_map["__default"]
+        try:
+            return from_string(value)
+        except Exception as e:
+            raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
 
+    def to_string(self, value: Any) -> str:
+        if self.type in self.type_map:
+            _, to_string = self.type_map[self.type]
+        else:
+            _, to_string = self.type_map["__default"]
+        try:
+            return to_string(value)
+        except Exception as e:
+            raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
 
 class Event:
     def __init__(self, name: str, id: int, args: List[EventArg], return_type: str):
@@ -106,21 +114,9 @@ class Event:
             if arg.name not in kwargs:
                 raise ValueError(f"Missing argument {arg.name} for event {event.name}")
             value = kwargs[arg.name]
-            if isinstance(value, str):
-                value = value.replace(FILE_SEPARATOR, "").replace(GROUP_SEPARATOR, "") #ensure no separators in string values
-            elif isinstance(value, int):
-                value = str(value)
-            elif isinstance(value, float):
-                value = f"{value:.6f}"
-            elif isinstance(value, bool):
-                value = "true" if value else "false"
-            elif isinstance(value, list):
-                if arg.type in ("list[str]", "list"):
-                    value = UNIT_SEPARATOR.join(value)
-                else:
-                    raise TypeError(f"Unsupported list type {arg.type} for argument {arg.name} in event {event.name}")
-            else:
-                raise TypeError(f"Unsupported type {type(value)} for argument {arg.name} in event {event.name}")
+
+            value = arg.to_string(value)
+
             args_list.append(f"{arg.id:02x}{RECORD_SEPARATOR}{value}")
         result += GROUP_SEPARATOR.join(args_list)
         return result
@@ -235,39 +231,20 @@ except Exception as e:
     sys.exit(1)
 
 
-if __name__ == "__main__":
-    from datetime import datetime
 
-    # for e in Events:
-    #     print(f"{e.id:<5d}\t{e}")
+def main() -> tuple[Event, dict[str, Any]]:
+    """
+    Decode an encoded event string into an Event object and its arguments.
+    """
 
-# try encode
-    event = Events["SERVER.CREATE"]
-    encoded = Event.encode(
-        event,
-        timestamp=int(datetime.now().timestamp()),
-        server_name="TestServer",
-        server_type="forge",
-        server_path="/this/is/a/very/long/path",
-        autostart="off",
-        mc_version="1.20.1",
-        ram="2048"
-    )
+    import argparse
+    parser = argparse.ArgumentParser(description="Decode an encoded event string.")
+    parser.add_argument("encoded", type=str, help="The encoded event string to decode.")
+    args = parser.parse_args()
+    encoded = args.encoded
 
-    for c in encoded:
-        print(f"{ord(c):02x}", end=" ")
-    print()
-    for c in encoded:
-        if ord(c) < 32 or ord(c) > 126:
-            print("  ", end=" ")
-        else:
-            print(f"{c} ", end=" ")
-    print()
-    print(len(encoded), "bytes")
-
-    # try decode
-    decoded_event, args = Event.decode(encoded)
-    print(f"Decoded event: {decoded_event}")
-    print("Arguments:")
-    for arg_name, value in args.items():
-        print(f"{arg_name}: {value} ({type(value).__name__})")
+    try:
+        print(Event.decode(encoded))
+    except Exception as e:
+        Logger.fatal(f"Failed to decode event: {e}")
+        sys.exit(1)
