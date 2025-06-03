@@ -229,22 +229,3 @@ try:
 except Exception as e:
     Logger.fatal(f"Failed to load events from XML file: {e}")
     sys.exit(1)
-
-
-
-def main() -> tuple[Event, dict[str, Any]]:
-    """
-    Decode an encoded event string into an Event object and its arguments.
-    """
-
-    import argparse
-    parser = argparse.ArgumentParser(description="Decode an encoded event string.")
-    parser.add_argument("encoded", type=str, help="The encoded event string to decode.")
-    args = parser.parse_args()
-    encoded = args.encoded
-
-    try:
-        print(Event.decode(encoded))
-    except Exception as e:
-        Logger.fatal(f"Failed to decode event: {e}")
-        sys.exit(1)

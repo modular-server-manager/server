@@ -2,22 +2,12 @@ import secrets
 from datetime import datetime
 from enum import IntEnum
 
-from version import Version
-
 
 class AccessLevel(IntEnum):
     USER = 0        # Global : Can see servers status       McServer : Nothing
     ADMIN = 1       # Global : Nothing                      McServer : Can start/stop servers, see logs, manage settings
     OPERATOR = 2    # Global : Can manage users             McServer : Can create and delete servers
 
-
-
-class ServerStatus(IntEnum):
-    STOPPED = 0
-    STARTING = 1
-    RUNNING = 2
-    STOPPING = 3
-    ERROR = 4
 
 class User:
     def __init__(self, username: str, password: str, registered_at : datetime, last_login : datetime, last_ip : str, global_access_level: AccessLevel = AccessLevel.USER):
@@ -49,16 +39,6 @@ class User:
             last_ip,
             global_access_level
         )
-
-class McServer:
-    def __init__(self, name: str, mc_version: Version, forge_version: Version, status: ServerStatus = ServerStatus.STOPPED):
-        self.name = name
-        self.mc_version = mc_version
-        self.forge_version = forge_version
-        self.status = status
-
-    def __repr__(self):
-        return f"McServer(name={self.name}, mc_version={self.mc_version}, forge_version={self.forge_version}, status={self.status})"
 
 class AccessToken:
     def __init__(self, username: str, token: str, expiration: datetime, remember: bool):

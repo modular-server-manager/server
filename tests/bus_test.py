@@ -1,9 +1,10 @@
 import multiprocessing as mp
 import threading as th
 import time
-from datetime import datetime
+from typing import Any, Dict
 
 from gamuLogger import Levels, Logger
+from version import Version
 
 from mc_srv_manager.bus import Bus, BusData, Events
 from mc_srv_manager.bus.bus_dispatcher import BusDispatcher
@@ -14,7 +15,7 @@ from mc_srv_manager.minecraft.forge.web_interface import WebInterface
 
 Logger.show_threads_name()
 Logger.show_pid()
-Logger.set_level("stdout", Levels.INFO)
+Logger.set_level("stdout", Levels.DEBUG)
 Logger.set_module("bus test")
 
 
@@ -31,9 +32,12 @@ def bus_process1(bus_data : BusData):
 def bus_process2(bus_data : BusData):
     Logger.info("Starting bus_process2")
     bus = Bus(bus_data)
-    def c(timestamp: int) -> list[str]:
-        return [str(v) for v in WebInterface.get_mc_versions().keys()]
+    def c(timestamp: int) -> list[Version]:
+        return WebInterface.get_mc_versions().keys()
+    def d(timestamp: int, mc_version: Version) -> Dict[Version, Dict[str, Any]]:
+        return WebInterface.get_forge_versions(Version.from_string(mc_version))
     bus.register(Events["GET_VERSIONS.MINECRAFT"], c)
+    bus.register(Events["GET_VERSIONS.FORGE"], d)
     bus.start()
     time.sleep(5)
     # bus.trigger(Events["SERVER.STARTING"], server_name="TestServer", timestamp=int(datetime.now().timestamp()))
@@ -50,7 +54,7 @@ def bus_thread(bus_data : BusData):
 
 def main():
     # Create a BusDispatcher
-    dispatcher = BusDispatcher(memory_size=8, max_string_length=1024)
+    dispatcher = BusDispatcher(memory_size=8, max_string_length=8192)
 
     dispatcher_thread = th.Thread(target=dispatcher.mainloop, daemon=True, name="BusDispatcherThread")
     dispatcher_thread.start()

@@ -1,14 +1,18 @@
 import socketio
 from gamuLogger import Logger
 
-from .base_server import BaseServer
+from ...bus import BusData
+from ..Base_interface import BaseInterface
 
 Logger.set_module("socket_server")
 
-class WebSocketServer(BaseServer):
-    def __init__(self, config_path: str = None):
+class WebSocketServer(BaseInterface):
+    def __init__(self, bus_data : BusData, database_path: str):
         Logger.trace("Initializing WebSocketServer")
-        BaseServer.__init__(self, config_path)
+        BaseInterface.__init__(self,
+            bus_data=bus_data,
+            database_path=database_path
+        )
         self.__sio = socketio.Server(cors_allowed_origins='*')
         self.__config_routes()
 

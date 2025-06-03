@@ -8,7 +8,8 @@ from typing import Callable
 from cache import Cache
 from gamuLogger import Logger
 
-from ...database.types import ServerStatus  # same enum for consistency
+from ...bus import BusData
+from ..Base_mc_server import BaseMcServer, ServerStatus
 from ..properties import Properties
 from ..rcon import RCON
 
@@ -17,20 +18,21 @@ RE_LOG_TEXT = re.compile(r"^.*\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[.*/([A-Z]+)\] \[.
 Logger.set_module("minecraft.server manager")
 
 
-class MinecraftServer:
+class MinecraftServer(BaseMcServer):
     """
     Class to manage a Minecraft server.
     """
 
     def __init__(self,
-                 installation_dir: str,
+                 name : str,
+                 path: str,
+                 bus_data : BusData,
                  on_chat_message : Callable[[str], None]|None = None,
                  on_stop : Callable[[], None]|None = None,
                 ) -> None:
-        self.name = installation_dir.split("/")[-1]
-        self.installation_dir = installation_dir
+        super().__init__(name, path, bus_data)
         self.properties = Properties()
-        self.properties.load(f"{self.installation_dir}/server.properties")
+        self.properties.load(f"{self.path}/server.properties")
         self.__rcon = RCON("localhost", int(self.properties['rcon.port']), str(self.properties['rcon.password']))
         self.__ServerStatus = ServerStatus.STOPPED
         self.__server_thread = th.Thread(target=self.__start_server, daemon=True,  name=self.name)
@@ -56,7 +58,7 @@ class MinecraftServer:
         Logger.set_module(f"minecraft.{self.name}")
         process = subprocess.Popen(
             ["./run.sh", "--nogui"],
-            cwd=self.installation_dir,
+            cwd=self.path,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
@@ -82,7 +84,7 @@ class MinecraftServer:
                     Logger.fatal(match.group(3))
                 else:
                     Logger.debug(match.group(3))
-                if match.group(2) == "MinecraftServer" and match.group(1) == "INFO" and self.__on_chat_message:
+                if match.group(2) == "MinecraftServer" and self.__on_chat_message:
                     self.__on_chat_message(match.group(3))
             if "Failed to start" in decoded_line:
                 self.__ServerStatus = ServerStatus.ERROR
@@ -100,6 +102,7 @@ class MinecraftServer:
     def start(self):
         """
         Start the Minecraft Forge server.
+        Wait for the server to be in RUNNING state or ERROR state.
         """
         Logger.info(f"Starting server \"{self.name}\"...")
         # Start the server with run.sh script in the installation directory
@@ -119,6 +122,13 @@ class MinecraftServer:
         )
 
         atexit.register(self.__ensure_stop)
+
+    @property
+    def status(self) -> ServerStatus:
+        """
+        Get the current status of the server.
+        """
+        return self.__ServerStatus
 
     def stop(self):
         """
@@ -155,7 +165,6 @@ class MinecraftServer:
         Get the status of the server.
         """
         return self.__ServerStatus
-
 
 
     @Cache(expire_in=timedelta(seconds=2))
@@ -196,3 +205,46 @@ class MinecraftServer:
         else:
             Logger.warning("No seed found.")
             return ""
+
+
+    def on_server_stop(self, timestamp: int, server_name: str) -> bool:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received stop signal at {timestamp}.")
+            self.stop()
+            return True
+
+    def on_server_seed(self, timestamp: int, server_name: str) -> str:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received seed request at {timestamp}.")
+            return self.get_seed()
+
+    def on_console_send_message(self, timestamp: int, server_name: str, _from : str, message: str) -> None:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received console message at {timestamp}: {message} from {_from}")
+            cmd = 'tellraw @a {"text": "<{_from}> {message}", "color": "white"}'
+            self.send_command(cmd.format(_from=_from, message=message))
+
+    def on_console_send_command(self, timestamp: int, server_name: str, command: str) -> None:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received console command at {timestamp}: {command}")
+            self.send_command(command)
+
+    def on_player_kick(self, timestamp: int, server_name: str, player_name: str, reason: str) -> None:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received kick request for player {player_name} at {timestamp}: {reason}")
+            self.send_command(f"kick {player_name} {reason}")
+
+    def on_player_ban(self, timestamp: int, server_name: str, player_name: str, reason: str) -> None:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received ban request for player {player_name} at {timestamp}: {reason}")
+            self.send_command(f"ban {player_name} {reason}")
+
+    def on_player_pardon(self, timestamp: int, server_name: str, player_name: str) -> None:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received pardon request for player {player_name} at {timestamp}.")
+            self.send_command(f"pardon {player_name}")
+
+    def on_player_list(self, timestamp: int, server_name: str) -> list[str]:
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} received player list request at {timestamp}.")
+            return self.get_player_list()

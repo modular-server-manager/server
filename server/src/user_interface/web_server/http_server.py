@@ -15,21 +15,21 @@ from gamuLogger import Logger
 from http_code import HttpCode as HTTP
 from version import Version
 
-from ...database.types import (AccessLevel, AccessToken, McServer,
-                               ServerStatus, User)
-from ...minecraft.forge import installer
-from ...minecraft.forge.server import ForgeServer
-from ...minecraft.forge.web_interface import WebInterface
+from ...bus import BusData
+from ...minecraft import McServersModules
 from ...utils.hash import hash_string, verify_hash
 from ...utils.misc import str2bool, time_from_now
 from ...utils.regex import RE_MC_SERVER_NAME
-from .base_server import STATIC_PATH, BaseServer
+from ..Base_interface import BaseInterface
+from ..database.types import AccessLevel
 
 Logger.set_module("http_server")
 
+STATIC_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/client"
+
 T = TypeVar('T')
 
-JsonAble = dict[str, 'JsonAble'] | list['JsonAble'] | str | int | float | bool | None
+type JsonAble = dict[str, JsonAble] | list[JsonAble] | str | int | float | bool | None
 
 FlaskReturnData = (
     tuple[JsonAble, int, dict[str, str]] |      # data, status code, headers
@@ -43,10 +43,13 @@ FlaskReturnData = (
     str                                         # string
 )
 
-class HttpServer(BaseServer):
-    def __init__(self, config_path: str, port: int = 5000):
+class HttpServer(BaseInterface):
+    def __init__(self,bus_data : BusData, database_path: str, port: int):
         Logger.trace("Initializing HttpServer")
-        BaseServer.__init__(self, config_path)
+        BaseInterface.__init__(self,
+            bus_data=bus_data,
+            database_path=database_path
+        )
         self._port = port
         self.__app = Flask(__name__)
 
@@ -212,8 +215,8 @@ class HttpServer(BaseServer):
         def list_mc_versions() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                mc_versions = WebInterface.get_mc_versions() # type: ignore
-                return {"data" : [str(version) for version in mc_versions]} #type: ignore
+                versions = self.list_mc_versions()
+                return {"versions": [str(version) for version in versions]}, HTTP.OK
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -224,16 +227,12 @@ class HttpServer(BaseServer):
         def list_forge_versions(mc_version: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                page_path = WebInterface.get_mc_versions()[Version.from_string(mc_version)]
-                forge_versions = WebInterface.get_forge_versions(page_path)
-                result : dict[str, dict[str, bool]] = {}
-                for version, data in forge_versions.items():
-                    result[str(version)] = {
-                        "recommended": data["recommended"],
-                        "latest": data["latest"],
-                        "bugged": data["bugged"]
-                    }
-                return result
+                if not Version.is_valid_string(mc_version):
+                    Logger.trace(f"Invalid mc_version: {mc_version}")
+                    return {"message": "Invalid mc_version"}, HTTP.BAD_REQUEST
+                mc_version = Version.from_string(mc_version)
+                versions = self.list_forge_versions(mc_version)
+                return {"versions": [str(version) for version in versions]}, HTTP.OK
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -244,16 +243,17 @@ class HttpServer(BaseServer):
         def list_servers(token : str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                servers = self.database.get_servers()
+                servers = self.list_servers()
                 result = []
                 for server in servers:
-                    result.append({
-                        "name": server.name,
-                        "mc_version": str(server.mc_version),
-                        "forge_version": str(server.forge_version),
-                        "status": server.status.name
-                    })
+                    for key, item in server.items():
+                        if isinstance(item, Version):
+                            server[key] = str(item)
+                    result.append(server)
                 return result
+            except ValueError as ve:
+                Logger.debug(f"Error processing API request for path {request.path}: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -264,21 +264,14 @@ class HttpServer(BaseServer):
         def get_server_info(server_name: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                if not self.database.has_server(server_name):
-                    Logger.trace(f"Server {server_name} not found")
-                    return {"message": "Server Not Found"}, HTTP.NOT_FOUND
-                server = self.database.get_server(server_name)
-
-                return {
-                    "name": server.name,
-                    "mc_version": str(server.mc_version),
-                    "forge_version": str(server.forge_version),
-                    "status": server.status.name
-                }
-
-
-                Logger.trace(f"Server {server_name} not found")
-                return {"message": "Server Not Found"}, HTTP.NOT_FOUND
+                info = self.get_server_info(server_name)
+                for key, item in info.items():
+                    if isinstance(item, Version):
+                        info[key] = str(item)
+                return info, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Error processing API request for path {request.path}: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -289,47 +282,54 @@ class HttpServer(BaseServer):
         def create_new_server() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                data = request.get_json()
+                data : dict[str, JsonAble] = request.get_json()
                 server_name = data.get("name")
+                server_type = data.get("type")
+                server_path = data.get("path")
+                autostart = str2bool(data.get("autostart", "false"))
                 mc_version = data.get("mc_version")
-                forge_version = data.get("forge_version")
+                framework_version = data.get("framework_version")
+                ram = data.get("ram")
 
-                if not server_name or not mc_version or not forge_version:
-                    Logger.trace("Missing parameters for create_server. got name: {}, path: {}, mc_version: {}, forge_version: {}".format(server_name, server_path, mc_version, forge_version))
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
+                if not server_name or not isinstance(server_name, str) or not RE_MC_SERVER_NAME.match(server_name):
+                    Logger.debug("Invalid server name")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                server_name = html.escape(server_name.strip())
+                if not server_type or not isinstance(server_type, str) and server_type not in McServersModules:
+                    Logger.debug("Invalid server type")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
 
-                if not RE_MC_SERVER_NAME.match(server_name):
-                    Logger.trace(f"Invalid server name: {server_name}")
-                    return {"message": "Invalid server name"}, HTTP.BAD_REQUEST
-
-                if not Version.is_valid_string(mc_version):
-                    Logger.trace(f"Invalid mc_version: {mc_version}")
-                    return {"message": "Invalid mc_version"}, HTTP.BAD_REQUEST
-
-                if not Version.is_valid_string(forge_version):
-                    Logger.trace(f"Invalid forge_version: {forge_version}")
-                    return {"message": "Invalid forge_version"}, HTTP.BAD_REQUEST
-
+                if not server_path or not isinstance(server_path, str):
+                    Logger.debug("Invalid server path")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                server_path = html.escape(server_path.strip())
+                if not mc_version or not isinstance(mc_version, str):
+                    Logger.debug("Invalid mc_version")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
                 mc_version = Version.from_string(mc_version)
-                forge_version = Version.from_string(forge_version)
+                if server_type != "vanilla" and not framework_version or not isinstance(framework_version, str):
+                    Logger.debug("Invalid framework_version")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                framework_version = Version.from_string(framework_version) if framework_version else None
+                if not isinstance(autostart, bool):
+                    Logger.debug("Invalid autostart value")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                if not isinstance(ram, int) or ram <= 0:
+                    Logger.debug("Invalid RAM value")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
 
-                servers = self.config.get("servers", default={}, set=True)
-                if server_name in servers:
-                    Logger.trace(f"Server {server_name} already exists")
-                    return {"message": "Server Already Exists"}, HTTP.CONFLICT
-                servers_path = self.config.get("forge_servers_path")
-                server_path = os.path.join(servers_path, server_name)
-
-                url = WebInterface.get_forge_installer_url(mc_version, forge_version)
-                installer.install(url, server_path)
-                srv = McServer(
-                    name=server_name,
+                self.create_server(
+                    server_name=server_name,
+                    server_type=server_type,
+                    server_path=server_path,
+                    autostart=autostart,
                     mc_version=mc_version,
-                    forge_version=forge_version,
-                    status=ServerStatus.STOPPED
+                    framework_version=framework_version,
+                    ram=ram
                 )
-                self.database.add_server(srv)
-                return {"message": "Server Created"}, HTTP.CREATED
+            except ValueError as ve:
+                Logger.debug(f"Error creating server: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error creating server: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -351,34 +351,11 @@ class HttpServer(BaseServer):
                 username = data.get('username', None)
                 password = data.get('password', None)
                 remember = str2bool(data.get('remember', 'false'))
-                if not username or not password:
-                    Logger.trace("Missing parameters for login. got username: {}, password: {}, remember: {}".format(username, password, remember))
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-
-
-                if not self.database.has_user(username):
-                    Logger.trace(f"User {username} does not exist")
-                    return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
-                user = self.database.get_user(username)
-                try:
-                    if not verify_hash(password, user.password):
-                        Logger.trace(f"User {username} provided invalid password")
-                        return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
-                except argon2.exceptions.VerifyMismatchError as e:
-                    Logger.trace(f"Password verification failed for user {username}: {e}")
-                    return {"message": "Unauthorized"}, HTTP.UNAUTHORIZED
-                token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
-                self.database.set_user_token(token)
-                self.database.update_user(User(
-                    username=user.username,
-                    password=user.password,
-                    global_access_level=user.global_access_level,
-                    registered_at=user.registered_at,
-                    last_login=datetime.now(),
-                    last_ip=request.remote_addr
-                ))
-                Logger.trace(f"User {username} logged in with token {token.token}")
-                return { "token": token.token }, HTTP.OK
+                token = self.login(username, password, remember)
+                return {"token": token.token}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Login error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing login request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -386,7 +363,6 @@ class HttpServer(BaseServer):
 
         @self.__app.route('/api/register', methods=['POST'])
         def register() -> FlaskReturnData:
-            print("API request for path: {}".format(request.path))
             Logger.debug(f"API request for path: {request.path}")
             Logger.trace(request.get_json())
             try:
@@ -394,28 +370,11 @@ class HttpServer(BaseServer):
                 username = data.get('username', None)
                 password = data.get('password', None)
                 remember = str2bool(data.get('remember', 'false'))
-                if not username or not password:
-                    Logger.debug("Missing parameters for register. got username: {}, password: {}, remember: {}".format(username, password, remember))
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-
-                password = hash_string(password)
-
-                if self.database.has_user(username):
-                    Logger.debug(f"User {username} already exists")
-                    return {"message": "User already exists"}, HTTP.CONFLICT
-
-                self.database.add_user(User(
-                    username=username,
-                    password=password,
-                    access_level=AccessLevel.USER,
-                    registered_at=datetime.now(),
-                    last_login=datetime.now(),
-                    last_ip=request.remote_addr
-                ))
-                token = AccessToken.new(username, time_from_now(timedelta(hours=1)), remember)
-                self.database.set_user_token(token)
-                Logger.debug(f"User {username} registered with token {token.token}")
+                token = self.register(username, password, remember)
                 return { "token": token.token }, HTTP.CREATED
+            except ValueError as ve:
+                Logger.debug(f"Register error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing register request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -426,8 +385,11 @@ class HttpServer(BaseServer):
         def logout(token: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                self.database.delete_user_token(token)
+                self.logout(token)
                 return {"message": "Logged out"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Logout error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing logout request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -438,17 +400,11 @@ class HttpServer(BaseServer):
         def delete_user(token: str): # delete the user associated with the token
             Logger.trace(f"API request for path: {request.path}")
             try:
-                access_token = self.database.get_user_token_by_token(token)
-                if not access_token or not access_token.is_valid():
-                    return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
-
-                user = self.database.get_user(access_token.username)
-                if not user:
-                    return {"message": "User not found"}, HTTP.NOT_FOUND
-
-                self.database.delete_user(user.username)
-                self.database.delete_user_token(token)
+                self.delete_user(token)
                 return {"message": "User deleted"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Delete user error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing delete user request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -459,22 +415,16 @@ class HttpServer(BaseServer):
         def get_user_info(token : str):
             Logger.trace(f"API request for path: {request.path}")
             try:
-                if not token:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-
-                access_token = self.database.get_user_token_by_token(token)
-                if not access_token or not access_token.is_valid():
-                    return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
-
-                user = self.database.get_user(access_token.username)
+                user = self.get_user_info(token)
                 return {
                     "username": user.username,
                     "access_level": user.global_access_level.name,
                     "registered_at": user.registered_at.strftime("%d/%m/%Y, %H:%M:%S"),
-                    "last_login": user.last_login.strftime("%d/%m/%Y, %H:%M:%S"),
-                    "last_ip": user.last_ip
+                    "last_login": user.last_login.strftime("%d/%m/%Y, %H:%M:%S")
                 }, HTTP.OK
-
+            except ValueError as ve:
+                Logger.debug(f"Get user info error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -485,18 +435,13 @@ class HttpServer(BaseServer):
         def update_password(token: str): # update the password of the user associated with the token
             Logger.trace(f"API request for path: {request.path}")
             try:
-                access_token = self.database.get_user_token_by_token(token)
-                if not access_token or not access_token.is_valid():
-                    return {"message": "Invalid token"}, HTTP.UNAUTHORIZED
-
-                user = self.database.get_user(access_token.username)
                 data = request.get_json()
                 password = data.get('password', None)
-                if not password:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                user.password = hash_string(password)
-                self.database.update_user(user)
+                self.update_password(token, password)
                 return {"message": "User updated"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Update password error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -507,9 +452,7 @@ class HttpServer(BaseServer):
         def get_user_info_by_username(username: str):
             Logger.trace(f"API request for path: {request.path}")
             try:
-                user = self.database.get_user(username)
-                if not user:
-                    return {"message": "User not found"}, HTTP.NOT_FOUND
+                user = self.get_user_info_by_username(username)
                 return {
                     "username": user.username,
                     "access_level": user.global_access_level.name,
@@ -517,6 +460,9 @@ class HttpServer(BaseServer):
                     "last_login": user.last_login.strftime("%d/%m/%Y, %H:%M:%S"),
                     "last_ip": user.last_ip
                 }, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Get user info by username error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -529,14 +475,11 @@ class HttpServer(BaseServer):
             try:
                 data = request.get_json()
                 access_level = data.get('access_level', None)
-                if not access_level:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                user = self.database.get_user(username)
-                if not user:
-                    return {"message": "User not found"}, HTTP.NOT_FOUND
-                user.global_access_level = AccessLevel[access_level]
-                self.database.update_user(user)
+                self.update_user_access(username, access_level)
                 return {"message": "User updated"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Update user global access error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -549,40 +492,15 @@ class HttpServer(BaseServer):
             try:
                 data = request.get_json()
                 password = data.get('password', None)
-                if not password:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                user = self.database.get_user(username)
-                if not user:
-                    return {"message": "User not found"}, HTTP.NOT_FOUND
-                user.password = hash_string(password)
-                self.database.update_user(user)
+                self.update_user_password(username, password)
                 return {"message": "User updated"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Update user password error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
-
-        @self.__app.route('/api/user/<path:username>/access', methods=['POST'])
-        @self.request_auth(AccessLevel.OPERATOR, _global=True)
-        def update_user_access(username: str): # update the access level of the user for a specific server
-            Logger.trace(f"API request for path: {request.path}")
-            try:
-                data = request.get_json()
-                server = data.get('server', None)
-                access_level = data.get('access_level', None)
-                if not server or not access_level:
-                    return {"message": "Missing parameters"}, HTTP.BAD_REQUEST
-                user = self.database.get_user(username)
-                if not user:
-                    return {"message": "User not found"}, HTTP.NOT_FOUND
-                server_access_level = AccessLevel[access_level]
-                self.database.set_user_access(server, username, server_access_level)
-                return {"message": "User updated"}, HTTP.OK
-            except Exception as e:
-                Logger.error(f"Error processing user info request: {e}")
-                Logger.debug(f"Error details: {traceback.format_exc()}")
-                return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
-
 
 ###################################################################################################
 # endregion: user

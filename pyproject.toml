@@ -29,20 +29,20 @@ dependencies = [
     "eventlet==0.39.1",
     "greenlet==3.2.1",
     "python-socketio==5.13.0",
-    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.1/cache-1.1.1-py3-none-any.whl",
-    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.1/config-1.1.1-py3-none-any.whl",
-    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.1/http_code-1.1.1-py3-none-any.whl",
-    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.1/version-1.1.1-py3-none-any.whl",
-    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.1/singleton-1.1.1-py3-none-any.whl"
+    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.2/cache-1.1.2-py3-none-any.whl",
+    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.2/config-1.1.2-py3-none-any.whl",
+    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.2/http_code-1.1.2-py3-none-any.whl",
+    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.2/version-1.1.2-py3-none-any.whl",
+    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.2/singleton-1.1.2-py3-none-any.whl"
 ]
 
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
 
-
 [tool.setuptools]
 packages = ["mc_srv_manager",
                 "mc_srv_manager.bus",
+                "mc_srv_manager.core",
                 "mc_srv_manager.minecraft",
                     "mc_srv_manager.minecraft.forge",
                     "mc_srv_manager.minecraft.vanilla",

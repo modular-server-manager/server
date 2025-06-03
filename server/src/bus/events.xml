@@ -49,7 +49,7 @@
                 <arg name="timestamp" type="int" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <return type="None" />
+            <return type="bool" />
         </event>
         <event name="RESTART" id="0x0008">
             <args>
@@ -66,10 +66,11 @@
                 <arg name="server_type" type="str" id="0x03" />
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
-                <arg name="mc_version" type="str" id="0x06" />
-                <arg name="ram" type="int" id="0x07" />
+                <arg name="mc_version" type="Version" id="0x06" />
+                <arg name="framework_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="ram" type="int" id="0x08" />
             </args>
-            <return type="None" />
+            <return type="bool" />
         </event>
         <event name="DELETE" id="0x000A">
             <args>
@@ -94,8 +95,9 @@
                 <arg name="server_type" type="str" id="0x03" />
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
-                <arg name="mc_version" type="str" id="0x06" />
-                <arg name="ram" type="int" id="0x07" />
+                <arg name="mc_version" type="Version" id="0x06" />
+                <arg name="framework_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="ram" type="int" id="0x08" />
             </args>
             <return type="None" />
         </event>
@@ -118,7 +120,28 @@
             <args>
                 <arg name="timestamp" type="int" id="0x01" />
             </args>
-            <return type="json" />
+            <return type="list[Dict[str, Any]]" />
+        </event>
+        <event name="INFO" id="0x000F">
+            <args>
+                <arg name="timestamp" type="int" id="0x01" />
+                <arg name="server_name" type="str" id="0x02" />
+            </args>
+            <return type="Dict[str, Any]" />
+        </event>
+        <event name="PING" id="0x0010"> <!-- This event is used to check if the server is online -->
+            <args>
+                <arg name="timestamp" type="int" id="0x01" />
+                <arg name="server_name" type="str" id="0x02" />
+            </args>
+            <return type="bool" />
+        </event>
+        <event name="SEED" id="0x0011">
+            <args>
+                <arg name="timestamp" type="int" id="0x01" />
+                <arg name="server_name" type="str" id="0x02" />
+            </args>
+            <return type="str" />
         </event>
     </namespace>
 
@@ -144,7 +167,7 @@
             <args>
                 <arg name="timestamp" type="int" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
-                <arg name="from" type="str" id="0x03" />
+                <arg name="_from" type="str" id="0x03" />
                 <arg name="message" type="str" id="0x04" />
             </args>
             <return type="None" />

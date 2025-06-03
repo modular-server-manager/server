@@ -97,7 +97,7 @@ class Bus(Singleton):
     def get_subscribers(self, event_id: int) -> list[Callback]:
         return self.__subscribers[event_id] if event_id in self.__subscribers else []
 
-    def trigger(self, event: Event, **kwargs: Any) -> Any:
+    def trigger(self, event: Event, timeout : int = 5, **kwargs: Any) -> Any:
         """
         Trigger an event with the given name and arguments.
         If the event requires a timestamp and it is not provided, it will be added automatically.
@@ -121,9 +121,11 @@ class Bus(Singleton):
             raise ValueError("No free position in shared list to send data.")
 
         if event.return_type != None:
-            res = self.wait_for(event.return_event(), timeout=5)  # Wait for the event to be processed and return the result
+            res = self.wait_for(event.return_event(), timeout=timeout)  # Wait for the event to be processed and return the result
             Logger.debug(f"Event {event.name} triggered, waiting for result. Received: {res}")
             return res['result'] if res is not None else None
+        # res['result'] is of the type specified in the event's <return type="..." /> tag
+        # or None if the timeout is reached or the event is not triggered
         else:
             Logger.debug(f"Event {event.name} triggered without return type, no waiting for result.")
             return None

@@ -5,17 +5,26 @@ import socketio
 from eventlet import wsgi
 from gamuLogger import Logger
 
+from ...bus import BusData
 from ...utils.misc import NoLog
+from ..Base_interface import BaseInterface
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 
 Logger.set_module("server")
 
 class WebServer(HttpServer, WebSocketServer):
-    def __init__(self, config_path: str, port: int = 5000):
+    def __init__(self, bus_data : BusData, database_path: str, port: int = 5000):
         Logger.trace("Initializing WebServer")
-        HttpServer.__init__(self, config_path, port)
-        WebSocketServer.__init__(self, config_path)
+        HttpServer.__init__(self,
+            bus_data=bus_data,
+            database_path=database_path,
+            port=port
+        )
+        WebSocketServer.__init__(self,
+            bus_data=bus_data,
+            database_path=database_path
+        )
 
     def start(self):
         Logger.info(f"Starting HTTP server on port {self._port}")
@@ -32,3 +41,9 @@ class WebServer(HttpServer, WebSocketServer):
             sys.stdout.flush()
             Logger.info("Stopping HTTP server...")
             Logger.info("HTTP server stopped")
+
+    def stop(self):
+        Logger.info("Stopping WebServer...")
+        HttpServer.stop(self)
+        WebSocketServer.stop(self)
+        Logger.info("WebServer stopped")

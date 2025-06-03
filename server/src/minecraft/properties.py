@@ -8,6 +8,8 @@ from version import Version
 
 CONFIG_DIR = os.path.dirname(__file__)
 
+PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
+
 Logger.set_module('minecraft.properties')
 
 class PropertyOption:
@@ -273,7 +275,7 @@ class Properties:
 
         self.__properties : dict[str, Property] = {}
 
-        with open(f"{CONFIG_DIR}/data.xml", 'r') as file:
+        with open(PROPERTIES_FILE, 'r') as file:
             xml_data = file.read()
 
         root = fromstring(xml_data)

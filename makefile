@@ -148,7 +148,7 @@ install: $(EXECUTABLE)
 
 start: $(EXECUTABLE)
 	@echo "Starting server..."
-	@$(EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json --module-level config:INFO
 # --module-level http_server:DEBUG
 
 start/debug: $(EXECUTABLE)

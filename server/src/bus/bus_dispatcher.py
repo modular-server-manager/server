@@ -5,6 +5,8 @@ from multiprocessing.managers import SharedMemoryManager
 from gamuLogger import Logger
 from singleton import Singleton
 
+from .bus_data import BusData
+
 type SharedMemories = tuple[shm.ShareableList, shm.ShareableList]
 
 Logger.set_module("bus dispatcher")
@@ -22,6 +24,7 @@ class BusDispatcher(Singleton):
 
         self.__memory_size = memory_size
         self.__empty_string = ' ' * max_string_length  # Define an empty string of max length
+        self.__max_string_length = max_string_length
 
     def __del__(self):
         self.__manager.shutdown()
@@ -58,6 +61,26 @@ class BusDispatcher(Singleton):
         write_list.shm.unlink()
         read_list.shm.unlink()
         Logger.debug(f"Shared memory for {_for} released.")
+
+    def release_all_shared_memories(self):
+        """
+        Release all shared memories.
+        """
+        for key in list(self.__shared_memories.keys()):
+            self.release_shared_memory(key)
+        Logger.debug("All shared memories released.")
+
+    def get_bus_data(self, _for: str) -> BusData:
+        """
+        Get the bus data containing all shared memories.
+        """
+        write_mem, read_mem = self.get_shared_memory(_for)
+        return BusData(
+            write_list=write_mem,
+            read_list=read_mem,
+            memory_size=self.__memory_size,
+            max_string_length=self.__max_string_length
+        )
 
     def __move_forward(self, key : str):
         """

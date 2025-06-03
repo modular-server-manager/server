@@ -1,5 +1,22 @@
 {
-    "app_data_path" : "/var/minecraft",
-    "forge_servers_path" : "${app_data_path}/servers",
-    "database_path" : "${app_data_path}/server.db"
+    "app_data_path" : "/var/minecraft", // base path for most data
+    "minecraft_servers_dirs" : [
+        "${app_data_path}/servers"
+    ],
+    "server_config_path" : "${app_data_path}/servers.json", // path to server config file
+    "client_database_path" : "${app_data_path}/client.db", // path to client database
+    "user_interface_modules" : {
+        "web" : {
+            "enabled" : true, // enable or disable the web server
+            "port" : 5000 // port for the web server
+        },
+        "tk_window" : { // Window interface, not implemented yet
+            "name" : "Tkinter Window",
+            "enabled" : false // enable or disable the Tkinter window
+        }
+    },
+    "bus" : {
+        "memory_size" : 8, // size of each list between processes
+        "max_string_length" : 8192 // max length of strings in the bus
+    }
 }
