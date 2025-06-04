@@ -54,7 +54,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
-                global_access_level INTEGER NOT NULL DEFAULT 0,
+                access_level INTEGER NOT NULL DEFAULT 0,
                 registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                 last_login INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
             );
@@ -79,24 +79,21 @@ class Database:
         Add a new user to the database.
         """
         self.cursor.execute('''
-            INSERT INTO users (username, password, global_access_level, registered_at, last_login, last_ip)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password, access_level, registered_at, last_login)
+            VALUES (?, ?, ?, ?, ?)
         ''',
             (
                 user.username,
                 user.password,
-                user.global_access_level.value,
+                user.access_level.value,
                 int(datetime.now().timestamp()),
-                int(datetime.now().timestamp()),
-                user.last_ip
+                int(datetime.now().timestamp())
             )
         )
         self.connection.commit()
 
         # set default access level for all servers
-        for server in self.get_servers():
-            self.set_user_access(server.name, user.username, AccessLevel.USER)
-        Logger.debug(f"User {user.username} added with access level {user.global_access_level.name}")
+        Logger.debug(f"User {user.username} added with access level {user.access_level.name}")
 
     def get_user(self, username : str) -> User:
         """
@@ -105,7 +102,7 @@ class Database:
         :return: The user object.
         """
         self.cursor.execute('''
-            SELECT username, password, global_access_level, registered_at, last_login, last_ip
+            SELECT username, password, access_level, registered_at, last_login
             FROM users WHERE username = ?
         ''', (username,))
         res = self.cursor.fetchone()
@@ -115,10 +112,9 @@ class Database:
         return User(
             username=res[0],
             password=res[1],
-            global_access_level=AccessLevel(res[2]),
+            access_level=AccessLevel(res[2]),
             registered_at=datetime.fromtimestamp(res[3]),
-            last_login=datetime.fromtimestamp(res[4]),
-            last_ip=res[5]
+            last_login=datetime.fromtimestamp(res[4])
         )
 
     def has_user(self, username : str) -> bool:
@@ -138,9 +134,9 @@ class Database:
         :param user: The user object.
         """
         self.cursor.execute('''
-            UPDATE users SET password = ?, global_access_level = ?, last_login = ?, last_ip = ?
+            UPDATE users SET password = ?, access_level = ?, last_login = ?
             WHERE username = ?
-        ''', (user.password, user.global_access_level.value, int(user.last_login.timestamp()), user.last_ip, user.username))
+        ''', (user.password, user.access_level.value, int(user.last_login.timestamp()), user.username))
         self.connection.commit()
         Logger.debug(f"User {user} updated")
 
@@ -155,13 +151,6 @@ class Database:
         ''', (username,))
         self.connection.commit()
         Logger.debug(f"User {username} deleted")
-
-        # delete all access levels for this user
-        self.cursor.execute('''
-            DELETE FROM server_users_access WHERE user_name = ?
-        ''', (username,))
-        self.connection.commit()
-        Logger.debug(f"Access levels for user {username} deleted")
 
         # delete all access tokens for this user
         self.cursor.execute('''
@@ -184,10 +173,9 @@ class Database:
         return [User(
             username=row[1],
             password=row[2],
-            global_access_level=AccessLevel(row[3]),
+            access_level=AccessLevel(row[3]),
             registered_at=datetime.fromtimestamp(row[4]),
-            last_login=datetime.fromtimestamp(row[5]),
-            last_ip=row[6]
+            last_login=datetime.fromtimestamp(row[5])
         ) for row in res]
 
 

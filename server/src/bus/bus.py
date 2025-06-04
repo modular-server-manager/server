@@ -5,7 +5,6 @@ from multiprocessing import shared_memory as shm
 from typing import Any, Callable
 
 from gamuLogger import Logger
-from singleton import Singleton
 
 from ..utils.misc import is_types_equals
 from .bus_data import BusData
@@ -16,12 +15,9 @@ Logger.set_module("bus")
 type Callback = Callable[..., Any]
 
 
-class Bus(Singleton):
+class Bus:
 
     def __init__(self, data : BusData):
-        if hasattr(self, "_Bus__subscribers"):
-            return # avoid reinitializing
-
         self.__shared_list_write = data.write_list    # write messages to the bus
         self.__shared_list_read = data.read_list      # read messages from the bus
 
@@ -49,10 +45,15 @@ class Bus(Singleton):
     def __check_callback(self, event: Event, callback: Callback):
 
         annotations = callback.__annotations__
-        if "return" not in annotations:
-            raise ValueError(f"Callback for event {event.name} is missing return type annotation")
-        if not is_types_equals(str(annotations["return"]), event.return_type):
-            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {annotations['return']})")
+        if "return" in annotations:
+            if isinstance(annotations["return"], type):
+                return_str = annotations["return"].__name__
+            else:
+                return_str = str(annotations["return"])
+        else:
+            return_str = "None"
+        if not is_types_equals(str(return_str), event.return_type):
+            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {return_str})")
         for arg in event.args:
             if arg.name not in annotations:
                 raise ValueError(f"Callback for event {event.name} is missing argument {arg.name}")
@@ -122,7 +123,7 @@ class Bus(Singleton):
 
         if event.return_type != None:
             res = self.wait_for(event.return_event(), timeout=timeout)  # Wait for the event to be processed and return the result
-            Logger.debug(f"Event {event.name} triggered, waiting for result. Received: {res}")
+            Logger.debug(f"Event {event.name} returned: {res}")
             return res['result'] if res is not None else None
         # res['result'] is of the type specified in the event's <return type="..." /> tag
         # or None if the timeout is reached or the event is not triggered
@@ -133,14 +134,19 @@ class Bus(Singleton):
     def __read_incoming(self):
         Logger.info("Bus listening started")
         while self.__listen:
-            msg = self.__shared_list_read[0]
+            try:
+                msg = self.__shared_list_read[0]
+            except TypeError:
+                continue
             if msg != self.__empty_string:
+                Logger.trace(f"Processing message: {msg}")
                 try:
                     event, args = Event.decode(msg)
                     Logger.debug(f"Received message: {event} with args: {args}")
                     Logger.trace(f"Raw data: {msg} (Length: {len(msg)} bytes)")
                     if event.id in self.__subscribers:
                         for callback in self.__subscribers[event.id]:
+                            Logger.debug(f"Processing message {event} with callback {callback.__name__} and args {args}")
                             result = callback(**args)
                             Logger.debug(f"Callback {callback.__name__} returned: {result}")
                             if result is not None and event.return_type != "None":

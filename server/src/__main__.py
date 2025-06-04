@@ -7,24 +7,22 @@ from gamuLogger import Logger, config_argparse, config_logger
 Logger.show_pid()
 Logger.show_threads_name()
 
-from .core import Core
 
 BASE_PATH = __file__[:__file__.rfind('/')]  # get the base path of the server
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Start the HTTP server.")
 
-    config_argparse(parser)
+parser = argparse.ArgumentParser(description="Start the HTTP server.")
+config_argparse(parser)
+parser.add_argument("-c", "--config", type=str, default=f"{BASE_PATH}/config.json")
+args = parser.parse_args()
+config_logger(args)
 
-    parser.add_argument("-c", "--config", type=str, default=f"{BASE_PATH}/config.json")
+from .core import Core  # must be imported after Logger is configured
 
-    return parser.parse_args()
 
 def main():
     try:
-        args = parse_args()
-        config_logger(args)
         core = Core(args.config)
         core.start()
         core.mainloop()

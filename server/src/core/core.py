@@ -3,7 +3,7 @@ import os
 import threading as th
 import time
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from config import JSONConfig
 from gamuLogger import Logger
@@ -32,13 +32,15 @@ class Core:
         )
 
         # Initialize the bus to communicate with modules through the dispatcher
-        bus_data = self.__bus_dispatcher.get_bus_data("core_bus")
+        bus_data = self.__bus_dispatcher.get_bus_data("core")
         self.__bus = Bus(
             bus_data
         )
         self._srv_config = JSONConfig(self.__config.get("server_config_path"))
 
         self.__ui_processes: list[mp.Process] = []
+
+        self.__register_event_handlers()
 
         Logger.info("Core initialized successfully.")
 
@@ -90,23 +92,41 @@ class Core:
             module_conf.pop("name")  # Remove 'name' key
             module_conf["database_path"] = self.__config.get("client_database_path")
             try:
-                module_class = UserInterfaceModules[module_type]
-                module_instance = module_class(
-                    bus_data=bus_data,
-                    **module_conf,
-                )
+                def a():
+                    module_class = UserInterfaceModules[module_type]
+                    module_instance = module_class(
+                        bus_data=bus_data,
+                        **module_conf,
+                    )
+                    module_instance.start()
+
                 p = mp.Process(
-                    target=module_instance.start,
+                    target=a,
                     name=f"{module_type}_process",
                     daemon=True
                 )
                 self.__ui_processes.append(p)
                 p.start()
             except Exception as e:
-                Logger.error(f"Failed to initialize user interface module {config['name']}: {e}")
-                continue
+                Logger.fatal(f"Failed to initialize user interface module {config['name']}: {e}")
+                self.stop()  # Stop the core if a critical UI module fails to start
             else:
                 Logger.info(f"User interface module {config['name']} started successfully.")
+
+    def __register_event_handlers(self):
+        """
+        Registers event handlers for the core.
+        This method is called after the bus is initialized.
+        """
+        self.__bus.register(Events['SERVER.START'], self.on_server_start)
+        self.__bus.register(Events['SERVER.RESTART'], self.on_server_restart)
+        self.__bus.register(Events['SERVER.CREATE'], self.on_server_create)
+        self.__bus.register(Events['SERVER.DELETE'], self.on_server_delete)
+        self.__bus.register(Events['SERVER.RENAME'], self.on_server_rename)
+        self.__bus.register(Events['SERVER.LIST'], self.on_server_list)
+        self.__bus.register(Events['SERVER.INFO'], self.on_server_info)
+        self.__bus.register(Events['GET_VERSIONS.MINECRAFT'], self.on_get_version_minecraft)
+        self.__bus.register(Events['GET_VERSIONS.FORGE'], self.on_get_version_forge)
 
     def __is_server_path_valid(self, server_path: str) -> bool:
         """
@@ -129,7 +149,7 @@ class Core:
 
         return True
 
-    def __is_server_running(self, server_name: str) -> bool:
+    def __is_server_online(self, server_name: str) -> bool:
         """
         Checks if the server is running.
         :param server_name: Name of the server to check
@@ -142,7 +162,7 @@ class Core:
         pinged = self.__bus.trigger(
             Events['SERVER.PING'],
             server_name=server_name,
-            timeout=1 # if the server does not respond within 1 second, consider it offline
+            timeout=0.5 # if the server does not respond within 1 second, consider it offline
         )
         return pinged is True
 
@@ -167,7 +187,7 @@ class Core:
             Logger.error(f"Server {server_name} not found.")
             return
 
-        if self.__is_server_running(server_name):
+        if self.__is_server_online(server_name):
             Logger.warning(f"Server {server_name} is already running.")
             return
 
@@ -189,7 +209,7 @@ class Core:
         )
 
     def on_server_restart(self, timestamp : int, server_name: str):
-        if not self.__is_server_running(server_name):
+        if not self.__is_server_online(server_name):
             Logger.warning(f"Server {server_name} is not running. Cannot restart.")
             return
         Logger.info(f"Restarting server {server_name}...")
@@ -197,7 +217,7 @@ class Core:
             Events['SERVER.STOP'],
             server_name=server_name
         )
-        if self.__is_server_running(server_name):
+        if self.__is_server_online(server_name):
             Logger.error(f"Server {server_name} did not stop properly. Cannot restart.")
             return
         Logger.info(f"Server {server_name} stopped successfully. Starting it again...")
@@ -290,7 +310,7 @@ class Core:
             Logger.error(f"Server {server_name} not found.")
             return
 
-        if self.__is_server_running(server_name):
+        if self.__is_server_online(server_name):
             Logger.error(f"Server {server_name} is currently running. Please stop it before deleting.")
             return
 
@@ -337,7 +357,7 @@ class Core:
 
         Logger.info(f"Server {server_name} renamed to {new_name}.")
 
-    def on_server_list(self, timestamp : int) -> list[Dict[str, Any]]:
+    def on_server_list(self, timestamp : int) -> List[Dict[str, Any]]:
         """
         Returns a list of all servers managed by the core.
         Each server is represented as a dictionary with its properties.
@@ -349,6 +369,7 @@ class Core:
                 "type": srv['type'],
                 "mc_version": srv['mc_version'],
                 "framework_version": srv['framework_version'],
+                "online": self.__is_server_online(name)
             }
             for name, srv in self._srv_config._config.items()
         )

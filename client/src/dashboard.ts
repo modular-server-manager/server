@@ -21,17 +21,14 @@ async function fill_server_list() {
         for (const server of servers) {
             const row = document.createElement("button");
             row.className = "server";
-            let color = "green";
-            if (server.status === "STOPPED") {
-                color = "red";
-            } else if (server.status === "STARTING" || server.status === "STOPPING") {
-                color = "yellow";
-            }
+            let color : string = server.online ? "green" : "red";
+            let online_text : string = server.online ? "Online" : "Offline";
+
             row.innerHTML = `
                 <div class="server-name" style="color: ${color}">${server.name}</div>
                 <div class="server-mc-version">minecraft: ${server.mc_version}</div>
                 <div class="server-forge-version">forge: ${server.forge_version}</div>
-                <div class="server-status" style="color: ${color}">${server.status}</div>
+                <div class="server-status" style="color: ${color}">${online_text}</div>
                 `;
             row.addEventListener("click", () => {
                 // open the server page

@@ -99,13 +99,18 @@ class BusDispatcher(Singleton):
                 msg = write_list[0]
                 if msg == self.__empty_string:
                     continue
-                Logger.debug(f"Processing messages for {rec_key}")
+                Logger.debug(f"Processing messages from {rec_key}: {msg}")
                 for key, (_, read_list) in self.__shared_memories.items():
+                    if key == rec_key:
+                        continue
                     Logger.debug(f"Forwarding message {msg} to {key}")
                     for i in range(len(read_list)):
                         if read_list[i] == self.__empty_string:
                             read_list[i] = msg
+                            Logger.trace(f"Message {msg} forwarded to {key} at index {i}")
                             break
+                    else:
+                        Logger.warning(f"No empty slot found in {key} to forward message {msg}")
                 self.__move_forward(rec_key)
             time.sleep(0.01)
 

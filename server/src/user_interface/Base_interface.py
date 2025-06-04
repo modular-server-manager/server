@@ -66,12 +66,14 @@ class BaseInterface:
         if event_name in Events:
             event = Events[event_name]
             return self.__bus.trigger(event, **kwargs)
+        Logger.trace("\n".join(repr(e) for e in Events))
         raise IndexError(f"Event {event_name} does not exist.")
 
     def start(self):
         """
         Start the interface.
         """
+        self.__bus.start()
 
     def stop(self):
         """
@@ -112,7 +114,7 @@ class BaseInterface:
         self._database.update_user(User(
             username=user.username,
             password=user.password,
-            global_access_level=user.global_access_level,
+            access_level=user.access_level,
             registered_at=user.registered_at,
             last_login=datetime.now()
         ))
@@ -224,7 +226,7 @@ class BaseInterface:
         user = self._database.get_user(username)
         if not user:
             raise ValueError(f"User {username} does not exist.")
-        user.global_access_level = AccessLevel[access_level]
+        user.access_level = AccessLevel[access_level]
         self._database.update_user(user)
 
     def update_user_password(self, username: str, password: str):

@@ -10,25 +10,23 @@ class AccessLevel(IntEnum):
 
 
 class User:
-    def __init__(self, username: str, password: str, registered_at : datetime, last_login : datetime, last_ip : str, global_access_level: AccessLevel = AccessLevel.USER):
+    def __init__(self, username: str, password: str, registered_at : datetime, last_login : datetime, access_level: AccessLevel = AccessLevel.USER):
         self.username = username
         self.password = password
         self.registered_at = registered_at
         self.last_login = last_login
-        self.last_ip = last_ip
-        self.global_access_level = global_access_level
+        self.access_level = access_level
 
     def __repr__(self):
-        return f"User(username={self.username}, global_access_level={self.global_access_level}, registered_at={self.registered_at.strftime("%d/%m/%Y, %H:%M:%S")}, last_login={self.last_login.strftime("%d/%m/%Y, %H:%M:%S")}, last_ip={self.last_ip})"
+        return f"User(username={self.username}, access_level={self.access_level}, registered_at={self.registered_at.strftime("%d/%m/%Y, %H:%M:%S")}, last_login={self.last_login.strftime("%d/%m/%Y, %H:%M:%S")})"
 
     @classmethod
-    def new(cls, username: str, password: str, last_ip: str, global_access_level: AccessLevel = AccessLevel.USER):
+    def new(cls, username: str, password: str, access_level: AccessLevel = AccessLevel.USER):
         """
         Create a new user.
         :param username: The username of the user.
         :param password: The password of the user.
-        :param last_ip: The last IP address of the user.
-        :param global_access_level: The access level of the user.
+        :param access_level: The access level of the user.
         :return: The user object.
         """
         return cls(
@@ -36,8 +34,7 @@ class User:
             password,
             datetime.now(),
             datetime.now(),
-            last_ip,
-            global_access_level
+            access_level
         )
 
 class AccessToken:

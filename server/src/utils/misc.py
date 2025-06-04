@@ -48,7 +48,6 @@ def _split_top_level_args(s: str) -> list[str]:
     args.append(s[last:].strip())
     return args
 
-@debug_func()
 def is_types_equals(a: str, b : str) -> bool:
     """
     Check if two types are equal
@@ -59,7 +58,6 @@ def is_types_equals(a: str, b : str) -> bool:
     a = a.replace("typing.", "").replace("typing_extensions.", "")
     b = b.replace("typing.", "").replace("typing_extensions.", "")
 
-    Logger.debug(f"Comparing types: '{a}' and '{b}'")
 
     if a == b:
         return True

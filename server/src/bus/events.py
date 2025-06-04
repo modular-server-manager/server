@@ -156,6 +156,7 @@ class EventsType(Singleton):
         self.__load_events(xml_path)
 
     def __load_events(self, xml_path: str):
+        Logger.info(f"Loading events from XML file: {xml_path}")
         try:
             tree = ET.parse(xml_path)
         except ET.ParseError as e:
@@ -163,8 +164,10 @@ class EventsType(Singleton):
         root = tree.getroot()
         for namespace in root.findall('namespace'):
             self.__parse_namespace(namespace, namespace.get('name'))
+        Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
+        Logger.debug(f"Parsing namespace: {namespace_name}")
         for sub_namespace in namespace.findall('namespace'):
             self.__parse_namespace(
                 sub_namespace,
@@ -180,6 +183,9 @@ class EventsType(Singleton):
                 for arg in event.find('args').findall('arg')
             ]
             return_type = event.find('return').get('type')
+            Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
+            if event_id in self.events:
+                Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
             self.events[event_id] = Event(event_name, event_id, args, return_type)
 
     def __getitem__(self, item: str|int) -> Event:

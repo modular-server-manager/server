@@ -27,6 +27,7 @@ class WebServer(HttpServer, WebSocketServer):
         )
 
     def start(self):
+        super().start()
         Logger.info(f"Starting HTTP server on port {self._port}")
         try:
             app = socketio.WSGIApp(self._get_sio(), self._get_app())
