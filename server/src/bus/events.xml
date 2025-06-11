@@ -127,7 +127,7 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <return type="bool" />
+            <return type="str" />
         </event>
         <event name="SEED" id="0x0011">
             <args>

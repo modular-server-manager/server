@@ -5,24 +5,27 @@ ensure_token();
 
 const server_list = document.getElementById("server-list") as HTMLUListElement;
 
+
+const status_colors: { [key: string]: string } = {
+    "STOPPED" : "darkgray",
+    "STARTING" : "orange",
+    "RUNNING" : "lightgreen",
+    "STOPPING" : "orange",
+    "ERROR" : "red",
+    "UNKNOWN" : "darkgray"
+};
+
+
 // fill the server list with the servers
 async function fill_server_list() {
     const servers = await API.get_server_list();
-    /*
-    {
-        "name": server.name,
-        "mc_version": str(server.mc_version),
-        "forge_version": str(server.forge_version),
-        "status": server.status.name,
-        "path": server.path
-    }
-    */
+
     if (servers) {
         for (const server of servers) {
             const row = document.createElement("button");
             row.className = "server";
-            let color : string = server.online ? "green" : "red";
-            let online_text : string = server.online ? "Online" : "Offline";
+            let color : string = status_colors[server.status.toUpperCase()] || "darkgray";
+            let online_text : string = server.status.charAt(0).toUpperCase() + server.status.slice(1).toLowerCase();
 
             row.innerHTML = `
                 <div class="server-name" style="color: ${color}">${server.name}</div>

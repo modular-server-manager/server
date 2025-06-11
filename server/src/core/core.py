@@ -268,7 +268,7 @@ class Core:
 
         return True
 
-    def __is_server_online(self, server_name: str) -> bool:
+    def __get_server_status(self, server_name: str) -> ServerStatus:
         """
         Checks if the server is running.
         :param server_name: Name of the server to check
@@ -278,12 +278,12 @@ class Core:
             Logger.error(f"Server {server_name} not found.")
             return False
 
-        pinged = self.__bus.trigger(
+        pinged : str = self.__bus.trigger(
             Events['SERVER.PING'],
             server_name=server_name,
             timeout=0.5 # if the server does not respond within 0.5 second, consider it offline
         )
-        return pinged is True
+        return ServerStatus.from_string(pinged) if pinged else ServerStatus.STOPPED
 
     def on_server_start(self, timestamp : datetime, server_name: str):
         """
@@ -295,7 +295,7 @@ class Core:
             Logger.error(f"Server {server_name} not found.")
             return
 
-        if self.__is_server_online(server_name):
+        if self.__get_server_status(server_name):
             Logger.warning(f"Server {server_name} is already running.")
             return
 
@@ -309,7 +309,7 @@ class Core:
         )
 
     def on_server_restart(self, timestamp : datetime, server_name: str):
-        if not self.__is_server_online(server_name):
+        if not self.__get_server_status(server_name):
             Logger.warning(f"Server {server_name} is not running. Cannot restart.")
             return
         Logger.info(f"Restarting server {server_name}...")
@@ -317,7 +317,7 @@ class Core:
             Events['SERVER.STOP'],
             server_name=server_name
         )
-        if self.__is_server_online(server_name):
+        if self.__get_server_status(server_name):
             Logger.error(f"Server {server_name} did not stop properly. Cannot restart.")
             return
         Logger.info(f"Server {server_name} stopped successfully. Starting it again...")
@@ -410,7 +410,7 @@ class Core:
             Logger.error(f"Server {server_name} not found.")
             return
 
-        if self.__is_server_online(server_name):
+        if self.__get_server_status(server_name):
             Logger.error(f"Server {server_name} is currently running. Please stop it before deleting.")
             return
 
@@ -468,7 +468,7 @@ class Core:
                 "type": srv['type'],
                 "mc_version": srv['mc_version'],
                 "modloader_version": srv['modloader_version'],
-                "online": name in self.__mc_servers
+                "status": self.__get_server_status(name).name,
             }
             for name, srv in self._srv_config._config.items()
         )

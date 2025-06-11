@@ -16,6 +16,26 @@ class ServerStatus(IntEnum):
     RUNNING = 2
     STOPPING = 3
     ERROR = 4
+    UNKNOWN = 5
+
+    @staticmethod
+    def from_string(status: str) -> "ServerStatus":
+        """
+        Convert a string to a ServerStatus enum.
+        :param status: The status as a string.
+        :return: The corresponding ServerStatus enum.
+        """
+        status = status.upper()
+        if status not in ServerStatus.__members__:
+            raise ValueError(f"Invalid server status: {status}")
+        return ServerStatus[status]
+
+    def __bool__(self) -> bool:
+        """
+        Convert the ServerStatus to a boolean value.
+        :return: True if the server is running or starting, False otherwise.
+        """
+        return self in (ServerStatus.RUNNING, ServerStatus.STARTING)
 
 class BaseMcServer(ABC):
     """
@@ -124,14 +144,14 @@ class BaseMcServer(ABC):
     def path(self) -> str:
         return self.__path
 
-    def __on_ping(self, timestamp: datetime, server_name: str) -> bool:
+    def __on_ping(self, timestamp: datetime, server_name: str) -> str:
         """
         Callback for the SERVER.PING event.
         This method can be overridden by subclasses to handle the ping event.
         """
         if server_name == self.name:
             Logger.info(f"Server {self.name} received ping at {timestamp}.")
-            return True
+            return self.status.name
         Logger.debug(f"Ping received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
 
     def __register_callbacks(self):
