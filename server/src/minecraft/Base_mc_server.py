@@ -1,11 +1,14 @@
+import time
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import IntEnum
 
 from gamuLogger import Logger
+from version import Version
 
 from ..bus import Bus, BusData, Events
 
-Logger.set_module("mc_server.base")
+Logger.set_module("Base Server.Base")
 
 class ServerStatus(IntEnum):
     STOPPED = 0
@@ -25,23 +28,91 @@ class BaseMcServer(ABC):
         "on_server_seed": "SERVER.SEED",
         "on_console_send_message": "CONSOLE.SEND_MESSAGE",
         "on_console_send_command": "CONSOLE.SEND_COMMAND",
-        "on_player_kick": "PLAYER.KICK",
-        "on_player_ban": "PLAYER.BAN",
-        "on_player_pardon": "PLAYER.PARDON",
-        "on_player_list": "PLAYER.LIST",
+        "on_player_kick": "PLAYERS.KICK",
+        "on_player_ban": "PLAYERS.BAN",
+        "on_player_pardon": "PLAYERS.PARDON",
+        "on_player_list": "PLAYERS.LIST",
     }
 
-    def __init__(self, name : str, path : str, bus_data : BusData):
+    def __init__(self, name : str, path : str, ram : int, mc_version : Version, bus_data : BusData):
         self.__bus = Bus(bus_data)
+        self._ram = ram
+        self._mc_version = mc_version
         self.__name = name
         self.__path = path
+        self._ServerStatus = ServerStatus.STOPPED
         self.__register_callbacks()
 
-    @abstractmethod
+    @property
+    def status(self) -> ServerStatus:
+        """
+        Get the current status of the server.
+        """
+        return self._ServerStatus
+
     def start(self) -> None:
         """
         Start the Minecraft server.
         This method should be implemented by subclasses to start the server.
+        Wait for the server to stop
+        """
+        Logger.info(f"Starting server \"{self.name}\"...")
+        self.__bus.start()
+        self._start()
+        while self._ServerStatus not in (ServerStatus.RUNNING, ServerStatus.ERROR):
+            time.sleep(0.2)
+        if self._ServerStatus == ServerStatus.ERROR:
+            Logger.error(f"Server \"{self.name}\" failed to start.")
+            return
+        self.__bus.trigger(Events["SERVER.STARTED"], server_name = self.name)
+        self._after_start()
+        Logger.info(f"Server \"{self.name}\" started")
+        self.__wait_for_stop()
+        Logger.info(f"Server \"{self.name}\" has stopped with status: {self._ServerStatus.name}")
+
+    def __wait_for_stop(self) -> None:
+        """
+        Wait for the server to stop.
+        This method should be called after the server has been stopped to ensure it has fully stopped.
+        """
+        while self.status not in (ServerStatus.STOPPED, ServerStatus.ERROR):
+            try:
+                time.sleep(0.5)  # Wait for the server to
+            except KeyboardInterrupt:
+                break
+
+
+    def _start(self) -> None:
+        """
+        Abstract method to start the server.
+        This method should be implemented by subclasses to start the server.
+        """
+        pass
+
+    def _after_start(self) -> None:
+        """
+        Abstract method to perform actions after the server has started.
+        This method should be implemented by subclasses to handle post-start actions.
+        """
+        pass
+
+    def stop(self) -> None:
+        """
+        Stop the Minecraft server.
+        This method should be implemented by subclasses to stop the server.
+        """
+        Logger.info(f"Stopping server \"{self.name}\"...")
+        self._stop()
+        while self._ServerStatus not in (ServerStatus.STOPPED, ServerStatus.ERROR):
+            time.sleep(0.2)
+        self.__bus.trigger(Events["SERVER.STOPPED"], server_name = self.name)
+        self.__bus.stop()
+        Logger.info(f"Server \"{self.name}\" stopped with status: {self._ServerStatus.name}")
+
+    def _stop(self) -> None:
+        """
+        Abstract method to stop the server.
+        This method should be implemented by subclasses to stop the server.
         """
         pass
 
@@ -53,14 +124,15 @@ class BaseMcServer(ABC):
     def path(self) -> str:
         return self.__path
 
-    def __on_ping(self, timestamp: int, server_name: str) -> bool:
+    def __on_ping(self, timestamp: datetime, server_name: str) -> bool:
         """
         Callback for the SERVER.PING event.
         This method can be overridden by subclasses to handle the ping event.
         """
         if server_name == self.name:
             Logger.info(f"Server {self.name} received ping at {timestamp}.")
-        return True
+            return True
+        Logger.debug(f"Ping received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
 
     def __register_callbacks(self):
         for callback_name, event_name in self.available_callbacks.items():
@@ -79,11 +151,11 @@ def main():
 
     # example usage
     class ExampleServer(BaseMcServer):
-        def on_server_start(self, timestamp: int, server_name: str) -> None:
+        def on_server_start(self, timestamp: datetime, server_name: str) -> None:
             if server_name == self.name:
                 #start the server
                 print(f"Server started at {timestamp}")
 
     srv = ExampleServer("TestServer", "/path/to/server")
 
-    Bus().trigger(Events["SERVER.START"], int(datetime.now().timestamp()), "TestServer")
+    Bus().trigger(Events["SERVER.START"], server_name="TestServer")

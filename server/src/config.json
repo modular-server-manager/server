@@ -7,6 +7,7 @@
     "client_database_path" : "${app_data_path}/client.db", // path to client database
     "user_interface_modules" : {
         "web" : {
+            "name" : "Web Server",
             "enabled" : true, // enable or disable the web server
             "port" : 5000 // port for the web server
         },

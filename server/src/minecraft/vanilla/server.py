@@ -1,12 +1,12 @@
-import atexit
 import re
 import subprocess
 import threading as th
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Callable
 
 from cache import Cache
 from gamuLogger import Logger
+from version import Version
 
 from ...bus import BusData
 from ..Base_mc_server import BaseMcServer, ServerStatus
@@ -15,7 +15,7 @@ from ..rcon import RCON
 
 RE_LOG_TEXT = re.compile(r"^.*\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[.*/([A-Z]+)\] \[.*/(.*)\]: (.*)$") # first match is a color code, second match is the text
 
-Logger.set_module("minecraft.server manager")
+Logger.set_module("Mc Server.Vanilla Server")
 
 
 class MinecraftServer(BaseMcServer):
@@ -26,18 +26,17 @@ class MinecraftServer(BaseMcServer):
     def __init__(self,
                  name : str,
                  path: str,
-                 bus_data : BusData,
-                 on_chat_message : Callable[[str], None]|None = None,
-                 on_stop : Callable[[], None]|None = None,
+                 ram : int,
+                 mc_version : Version,
+                 bus_data : BusData
                 ) -> None:
-        super().__init__(name, path, bus_data)
+        super().__init__(name, path, ram=ram, mc_version=mc_version, bus_data=bus_data)
         self.properties = Properties()
         self.properties.load(f"{self.path}/server.properties")
         self.__rcon = RCON("localhost", int(self.properties['rcon.port']), str(self.properties['rcon.password']))
-        self.__ServerStatus = ServerStatus.STOPPED
         self.__server_thread = th.Thread(target=self.__start_server, daemon=True,  name=self.name)
-        self.__on_chat_message = on_chat_message
-        self.__on_stop = on_stop
+        self.__on_chat_message = None
+        self.__on_stop = None
 
     def set_on_chat_message(self, on_chat_message: Callable[[str], None]) -> None:
         """
@@ -51,24 +50,32 @@ class MinecraftServer(BaseMcServer):
         """
         self.__on_stop = on_stop
 
+    def _spawn_server_process(self) -> subprocess.Popen[bytes]:
+        """
+        Spawn the server process.
+        """
+        return subprocess.Popen(
+            ["java", f"-Xmx{self._ram}M", "-jar", f"server-{self._mc_version}.jar", "--nogui"],
+            cwd=self.path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
     def __start_server(self):
         """
         Start the Minecraft Forge server./
         """
-        Logger.set_module(f"minecraft.{self.name}")
-        process = subprocess.Popen(
-            ["./run.sh", "--nogui"],
-            cwd=self.path,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-        self.__ServerStatus = ServerStatus.STARTING
+        Logger.set_module(f"Mc Server.{self.name}")
+
+        process = self._spawn_server_process()
+
+        self._ServerStatus = ServerStatus.STARTING
         for line in iter(process.stdout.readline, b''):
-            if self.__ServerStatus in [ServerStatus.STOPPING, ServerStatus.STOPPED]:
+            if self._ServerStatus in [ServerStatus.STOPPING, ServerStatus.STOPPED]:
                 break
             decoded_line = line.decode('utf-8').strip()
             if "Done" in decoded_line:
-                self.__ServerStatus = ServerStatus.RUNNING
+                self._ServerStatus = ServerStatus.RUNNING
             for l in decoded_line.split("\n"):
                 match = RE_LOG_TEXT.match(l)
                 if not match:
@@ -87,7 +94,7 @@ class MinecraftServer(BaseMcServer):
                 if match.group(2) == "MinecraftServer" and self.__on_chat_message:
                     self.__on_chat_message(match.group(3))
             if "Failed to start" in decoded_line:
-                self.__ServerStatus = ServerStatus.ERROR
+                self._ServerStatus = ServerStatus.ERROR
                 break
         Logger.debug(f"waiting for server {self.name} to stop")
         process.stdout.close()
@@ -95,54 +102,21 @@ class MinecraftServer(BaseMcServer):
         if self.__rcon:
             self.__rcon.close()
         Logger.debug(f"server {self.name} stopped")
-        self.__ServerStatus = ServerStatus.STOPPED
+        self._ServerStatus = ServerStatus.STOPPED
         if self.__on_stop:
             self.__on_stop()
 
-    def start(self):
-        """
-        Start the Minecraft Forge server.
-        Wait for the server to be in RUNNING state or ERROR state.
-        """
-        Logger.info(f"Starting server \"{self.name}\"...")
-        # Start the server with run.sh script in the installation directory
+    def _start(self):
         self.__server_thread.start()
 
-        while self.__ServerStatus not in (ServerStatus.RUNNING, ServerStatus.ERROR):
-            th.Event().wait(0.2)
-
-        if self.__ServerStatus == ServerStatus.ERROR:
-            Logger.error(f"Server \"{self.name}\" failed to start.")
-            return
-
+    def _after_start(self):
         self.__rcon.open()
         self.__rcon.authenticate()
-        Logger.info(
-            f"Server \"{self.name}\" started"
-        )
 
-        atexit.register(self.__ensure_stop)
 
-    @property
-    def status(self) -> ServerStatus:
-        """
-        Get the current status of the server.
-        """
-        return self.__ServerStatus
-
-    def stop(self):
-        """
-        Stop the Minecraft Forge server.
-        """
+    def _stop(self):
         self.send_command("stop")
 
-    def __ensure_stop(self):
-        """
-        Ensure that the server is stopped when the script exits.
-        """
-        if self.__ServerStatus not in [ServerStatus.STOPPED, ServerStatus.STOPPING]:
-            Logger.warning(f"Server {self.name} is not stopped. Stopping server...")
-            self.stop()
 
     def send_command(self, command: str):
         """
@@ -164,7 +138,7 @@ class MinecraftServer(BaseMcServer):
         """
         Get the status of the server.
         """
-        return self.__ServerStatus
+        return self._ServerStatus
 
 
     @Cache(expire_in=timedelta(seconds=2))
@@ -207,44 +181,44 @@ class MinecraftServer(BaseMcServer):
             return ""
 
 
-    def on_server_stop(self, timestamp: int, server_name: str) -> bool:
+    def on_server_stop(self, timestamp: datetime, server_name: str) -> bool:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received stop signal at {timestamp}.")
             self.stop()
             return True
 
-    def on_server_seed(self, timestamp: int, server_name: str) -> str:
+    def on_server_seed(self, timestamp: datetime, server_name: str) -> str:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received seed request at {timestamp}.")
             return self.get_seed()
 
-    def on_console_send_message(self, timestamp: int, server_name: str, _from : str, message: str) -> None:
+    def on_console_send_message(self, timestamp: datetime, server_name: str, _from : str, message: str) -> None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received console message at {timestamp}: {message} from {_from}")
             cmd = 'tellraw @a {"text": "<{_from}> {message}", "color": "white"}'
             self.send_command(cmd.format(_from=_from, message=message))
 
-    def on_console_send_command(self, timestamp: int, server_name: str, command: str) -> None:
+    def on_console_send_command(self, timestamp: datetime, server_name: str, command: str) -> None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received console command at {timestamp}: {command}")
             self.send_command(command)
 
-    def on_player_kick(self, timestamp: int, server_name: str, player_name: str, reason: str) -> None:
+    def on_player_kick(self, timestamp: datetime, server_name: str, player_name: str, reason: str) -> None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received kick request for player {player_name} at {timestamp}: {reason}")
             self.send_command(f"kick {player_name} {reason}")
 
-    def on_player_ban(self, timestamp: int, server_name: str, player_name: str, reason: str) -> None:
+    def on_player_ban(self, timestamp: datetime, server_name: str, player_name: str, reason: str) -> None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received ban request for player {player_name} at {timestamp}: {reason}")
             self.send_command(f"ban {player_name} {reason}")
 
-    def on_player_pardon(self, timestamp: int, server_name: str, player_name: str) -> None:
+    def on_player_pardon(self, timestamp: datetime, server_name: str, player_name: str) -> None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received pardon request for player {player_name} at {timestamp}.")
             self.send_command(f"pardon {player_name}")
 
-    def on_player_list(self, timestamp: int, server_name: str) -> list[str]:
+    def on_player_list(self, timestamp: datetime, server_name: str) -> list[str]:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received player list request at {timestamp}.")
             return self.get_player_list()

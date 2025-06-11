@@ -23,7 +23,7 @@ from ...utils.regex import RE_MC_SERVER_NAME
 from ..Base_interface import BaseInterface
 from ..database.types import AccessLevel
 
-Logger.set_module("http_server")
+Logger.set_module("User Interface.Http Server")
 
 STATIC_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/client"
 
@@ -78,7 +78,6 @@ class HttpServer(BaseInterface):
         :param access_level: Required access level.
         """
         def decorator(f : Callable[[Any], FlaskReturnData] | Callable[[], FlaskReturnData]) -> Callable[[Any], FlaskReturnData] | Callable[[], FlaskReturnData]:
-            Logger.set_module("middleware")
             def wrapper(*args: Any, **kwargs: Any) -> FlaskReturnData:
                 Logger.info(f"Request from {request.remote_addr} with method {request.method} for path {request.path}")
                 try:
@@ -260,7 +259,7 @@ class HttpServer(BaseInterface):
                 server_path = data.get("path")
                 autostart = str2bool(data.get("autostart", "false"))
                 mc_version = data.get("mc_version")
-                framework_version = data.get("framework_version")
+                modloader_version = data.get("modloader_version")
                 ram = data.get("ram")
 
                 if not server_name or not isinstance(server_name, str) or not RE_MC_SERVER_NAME.match(server_name):
@@ -279,10 +278,10 @@ class HttpServer(BaseInterface):
                     Logger.debug("Invalid mc_version")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
                 mc_version = Version.from_string(mc_version)
-                if server_type != "vanilla" and not framework_version or not isinstance(framework_version, str):
-                    Logger.debug("Invalid framework_version")
+                if server_type != "vanilla" and not modloader_version or not isinstance(modloader_version, str):
+                    Logger.debug("Invalid modloader_version")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
-                framework_version = Version.from_string(framework_version) if framework_version else None
+                modloader_version = Version.from_string(modloader_version) if modloader_version else None
                 if not isinstance(autostart, bool):
                     Logger.debug("Invalid autostart value")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
@@ -296,7 +295,7 @@ class HttpServer(BaseInterface):
                     server_path=server_path,
                     autostart=autostart,
                     mc_version=mc_version,
-                    framework_version=framework_version,
+                    modloader_version=modloader_version,
                     ram=ram
                 )
             except ValueError as ve:

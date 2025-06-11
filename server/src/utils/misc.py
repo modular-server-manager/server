@@ -2,7 +2,7 @@ import datetime as dt
 
 from gamuLogger import Logger, debug_func
 
-Logger.set_module("utils")
+Logger.set_module("Utils.Misc")
 
 def str2bool(v : str) -> bool:
     """

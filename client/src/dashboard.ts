@@ -26,10 +26,23 @@ async function fill_server_list() {
 
             row.innerHTML = `
                 <div class="server-name" style="color: ${color}">${server.name}</div>
-                <div class="server-mc-version">minecraft: ${server.mc_version}</div>
-                <div class="server-forge-version">forge: ${server.forge_version}</div>
-                <div class="server-status" style="color: ${color}">${online_text}</div>
+                <div class="server-mc-version">minecraft ${server.mc_version}</div>
+            `;
+
+            if (server.type != "vanilla") {
+                row.innerHTML += `
+                    <div class="server-modloader-version">${server.type} ${server.modloader_version}</div>
                 `;
+            }
+            else {
+                row.innerHTML += `
+                    <div class="server-modloader-version"></div>
+                `;
+            }
+            row.innerHTML +=
+            `
+                <div class="server-status" style="color: ${color}">${online_text}</div>
+            `;
             row.addEventListener("click", () => {
                 // open the server page
                 window.location.href = `/app/server?s=${server.name}`;

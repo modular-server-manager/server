@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 from json import dumps as json_dumps
 from json import loads as json_loads
 from typing import Any, Callable, List
@@ -9,7 +10,7 @@ from gamuLogger import Logger
 from singleton import Singleton
 from version import Version
 
-Logger.set_module("bus.events")
+Logger.set_module("Bus.Events")
 
 __FILE_DIR__ = os.path.dirname(__file__)
 
@@ -20,6 +21,102 @@ UNIT_SEPARATOR = "\x1f"    # ASCII Unit Separator (US) character
 
 
 
+class EncodedEvent:
+    def __init__(self, encoded_event: str):
+        self.__string = encoded_event
+
+    def __str__(self):
+        return ' '.join(format(ord(c), '02X') for c in self.__string)
+
+    def __repr__(self):
+        return f"EncodedEvent({self.__string})"
+
+    def __eq__(self, value):
+        if isinstance(value, EncodedEvent):
+            return self.__string == value.__string
+        elif isinstance(value, str):
+            return self.__string == value
+        return False
+
+    def string(self) -> str:
+        """
+        Returns the encoded event string.
+        """
+        return self.__string
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the encoded event string.
+        """
+        return len(self.__string)
+
+    @staticmethod
+    def create(event: 'Event', **kwargs) -> 'EncodedEvent':
+        """
+        Creates an EncodedEvent instance from an Event and its arguments.
+        """
+        result = f"{event.id:05x}{FILE_SEPARATOR}"
+        args_list : list[str] = []
+        for arg in event.args:
+            if arg.name not in kwargs:
+                raise ValueError(f"Missing argument {arg.name} for event {event.name}")
+            value = kwargs[arg.name]
+
+            value = arg.to_string(value)
+
+            args_list.append(f"{arg.id:02x}{RECORD_SEPARATOR}{value}")
+        result += GROUP_SEPARATOR.join(args_list)
+        return EncodedEvent(result)
+
+    @staticmethod
+    def from_hex_string(hex_string: str) -> 'EncodedEvent':
+        """
+        Creates an EncodedEvent instance from a hexadecimal string.
+        The string should be a valid hexadecimal representation of the encoded event.
+        """
+        if not isinstance(hex_string, str):
+            raise TypeError("Expected a string")
+        try:
+            decoded_string = bytes.fromhex(hex_string).decode('utf-8')
+        except ValueError as e:
+            raise ValueError(f"Invalid hexadecimal string: {e}") from e
+        return EncodedEvent(decoded_string)
+
+    def decode(self) -> tuple['Event', dict[str, Any]]:
+        """
+        Decodes the encoded event string into an Event instance and a dictionary of arguments.
+        """
+        parts = self.__string.split(FILE_SEPARATOR)
+        if len(parts) < 2:
+            raise ValueError("Encoded event string is malformed")
+        if len(parts) == 4:
+            # Handle the case where the string is in the format "source_id:02X{FILE_SEPARATOR}target_id:02X{FILE_SEPARATOR}event_id:02X{FILE_SEPARATOR}args"
+            source_id, target_id, event_id_hex, args_str = parts
+            parts = parts[2:]  # Keep only the event ID and args
+
+        event_id = int(parts[0], 16)
+        args_str = parts[1].split(GROUP_SEPARATOR)
+
+        event = Events.get_event(event_id)
+
+        args = {}
+        for arg_str in args_str:
+            if not arg_str:
+                continue
+            arg_parts = arg_str.split(RECORD_SEPARATOR)
+            if len(arg_parts) != 2:
+                raise ValueError(f"Malformed argument string: {arg_str}")
+            arg_id = int(arg_parts[0], 16)
+            value = arg_parts[1]
+            for arg in event.args:
+                if arg.id == arg_id:
+                    typed_value = arg.convert(value)
+                    args[arg.name] = typed_value
+                    break
+            else:
+                raise KeyError(f"Argument with ID {arg_id} not found in event {event.name}")
+        return event, args
+
 class EventArg:
     type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
         "int":          (int, str),
@@ -28,7 +125,8 @@ class EventArg:
         "string":       (str, str),
         "Version":      (Version.from_string, str),
         "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
-        "__default":    (json_loads, lambda v: json_dumps(v, ensure_ascii=False, separators=(',', ':'), default=str)),
+        "datetime":    (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
+        "__default":    (json_loads, lambda v: json_dumps(v, ensure_ascii=False, separators=(',', ':'), default=str))
     }
 
     def __init__(self, name: str, type: str, id : int):
@@ -75,19 +173,19 @@ class Event:
         """
         if self.id > 65535 or self.name.endswith(".RETURN"):
             raise ValueError(
-                f"This event {self.name} is already a return event or has an ID that exceeds the maximum allowed value."
+                f"Event {self.name} is already a return event or has an ID that exceeds the maximum allowed value."
             )
 
         if self.return_type == "None":
             raise ValueError(
-                f"This event {self.name} does not have a return type defined."
+                f"Event {self.name} does not have a return type defined."
             )
 
         return Event(
             name=f"{self.name}.RETURN",
             id=self.id + 65536,  # Increment ID by 65536 so in hexa : 0x0209 (0x00209) will be 0x10209
             args=[EventArg(name="result", type=self.return_type, id=1)],
-            return_type=None
+            return_type="None"
         )
 
     def __repr__(self):
@@ -107,47 +205,24 @@ class Event:
         raise KeyError(f"Argument {item} not found in event {self.name}")
 
     @staticmethod
-    def encode(event : 'Event', **kwargs) -> str:
-        result = f"{event.id:05x}{FILE_SEPARATOR}"
-        args_list : list[str] = []
-        for arg in event.args:
-            if arg.name not in kwargs:
-                raise ValueError(f"Missing argument {arg.name} for event {event.name}")
-            value = kwargs[arg.name]
-
-            value = arg.to_string(value)
-
-            args_list.append(f"{arg.id:02x}{RECORD_SEPARATOR}{value}")
-        result += GROUP_SEPARATOR.join(args_list)
-        return result
+    def encode(event : 'Event', **kwargs) -> EncodedEvent:
+        """
+        Encodes an event and its arguments into a string format.
+        The format is:
+        <event_id><FILE_SEPARATOR><arg_id1><RECORD_SEPARATOR><value1><GROUP_SEPARATOR><arg_id2><RECORD_SEPARATOR><value2>...
+        """
+        if not isinstance(event, Event):
+            raise TypeError("Expected an instance of Event")
+        return EncodedEvent.create(event, **kwargs)
 
     @staticmethod
-    def decode(encoded: str) -> tuple['Event', dict[str, str]]:
-        parts = encoded.split(FILE_SEPARATOR)
-        if len(parts) < 2:
-            raise ValueError("Encoded event string is malformed")
-        event_id = int(parts[0], 16)
-        args_str = parts[1].split(GROUP_SEPARATOR)
-
-        event = Events.get_event(event_id)
-
-        args = {}
-        for arg_str in args_str:
-            if not arg_str:
-                continue
-            arg_parts = arg_str.split(RECORD_SEPARATOR)
-            if len(arg_parts) != 2:
-                raise ValueError(f"Malformed argument string: {arg_str}")
-            arg_id = int(arg_parts[0], 16)
-            value = arg_parts[1]
-            for arg in event.args:
-                if arg.id == arg_id:
-                    typed_value = arg.convert(value)
-                    args[arg.name] = typed_value
-                    break
-            else:
-                raise KeyError(f"Argument with ID {arg_id} not found in event {event.name}")
-        return event, args
+    def decode(encoded: EncodedEvent) -> tuple['Event', dict[str, str]]:
+        """
+        Decodes an encoded event string into an Event instance and a dictionary of arguments.
+        The format is:
+        <event_id><FILE_SEPARATOR><arg_id1><RECORD_SEPARATOR><value1><GROUP_SEPARATOR><arg_id2><RECORD_SEPARATOR><value2>...
+        """
+        return encoded.decode()
 
 class EventsType(Singleton):
 

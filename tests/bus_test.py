@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import threading as th
 import time
+from datetime import datetime
 from typing import Any, Dict
 
 from gamuLogger import Levels, Logger
@@ -16,7 +17,7 @@ from mc_srv_manager.minecraft.forge.web_interface import WebInterface
 Logger.show_threads_name()
 Logger.show_pid()
 Logger.set_level("stdout", Levels.DEBUG)
-Logger.set_module("bus test")
+Logger.set_module("Bus.Test")
 
 
 def bus_process1(bus_data : BusData):
@@ -32,9 +33,9 @@ def bus_process1(bus_data : BusData):
 def bus_process2(bus_data : BusData):
     Logger.info("Starting bus_process2")
     bus = Bus(bus_data)
-    def c(timestamp: int) -> list[Version]:
+    def c(timestamp: datetime) -> list[Version]:
         return WebInterface.get_mc_versions().keys()
-    def d(timestamp: int, mc_version: Version) -> Dict[Version, Dict[str, Any]]:
+    def d(timestamp: datetime, mc_version: Version) -> Dict[Version, Dict[str, Any]]:
         return WebInterface.get_forge_versions(Version.from_string(mc_version))
     bus.register(Events["GET_VERSIONS.MINECRAFT"], c)
     bus.register(Events["GET_VERSIONS.FORGE"], d)

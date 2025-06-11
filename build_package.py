@@ -16,6 +16,6 @@ if "--version" in sys.argv:
     sys.argv.pop(idx)  # remove --version
     sys.argv.pop(idx)  # remove version value
 
-print(f"{sys.executable} -m build {' '.join(sys.argv[1:])}")
-subprocess.run([sys.executable, "-m", "build"] + sys.argv[1:],
-               check=True, stderr=sys.stderr, stdout=sys.stdout)
+cmd = [sys.executable, "-m", "build"] + sys.argv[1:]
+print(" ".join(cmd))  # Print the command for debugging
+subprocess.run(cmd, check=True, stderr=sys.stderr, stdout=sys.stdout)

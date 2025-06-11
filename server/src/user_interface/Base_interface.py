@@ -10,7 +10,7 @@ from ..utils.hash import hash_string, verify_hash
 from ..utils.misc import time_from_now
 from .database import AccessLevel, AccessToken, Database, User
 
-Logger.set_module("BaseInterface")
+Logger.set_module("User Interface.Base")
 
 class BaseInterface:
     """
@@ -42,7 +42,6 @@ class BaseInterface:
         if hasattr(self, "_BaseInterface__bus"): # Avoid reinitializing the bus
             return
         self.__bus = Bus(bus_data)
-        self.__bus.start()
 
         self._database = Database(database_path)
 
@@ -279,7 +278,7 @@ class BaseInterface:
         path: str,
         autostart: bool,
         mc_version: Version,
-        framework_version: Version = None,
+        modloader_version: Version = None,
         ram: int = 1024,
     ) -> None:
         """
@@ -289,8 +288,8 @@ class BaseInterface:
         if not name or not type or not path or not mc_version:
             raise ValueError("Missing parameters for create_server. Name, type, path, and Minecraft version are required.")
 
-        if type != "vanilla" and framework_version is None:
-            raise ValueError("Missing framework version for non-vanilla server types.")
+        if type != "vanilla" and modloader_version is None:
+            raise ValueError("Missing modloader version for non-vanilla server types.")
         if not isinstance(ram, int) or ram <= 0:
             raise ValueError("RAM must be a positive integer.")
 
@@ -300,7 +299,7 @@ class BaseInterface:
                         server_path=path,
                         autostart=autostart,
                         mc_version=mc_version,
-                        framework_version=framework_version or Version("0.0.0"),
+                        modloader_version=modloader_version or Version("0.0.0"),
                         ram=ram):
             Logger.debug(f"Server {name} created successfully.")
         else:

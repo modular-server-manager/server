@@ -7,7 +7,7 @@ from gamuLogger import Logger
 
 from .types import AccessLevel, AccessToken, User
 
-Logger.set_module("database")
+Logger.set_module("User Interface.Database")
 
 class Database:
     __instances : Dict[str, 'Database'] = {}

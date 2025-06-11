@@ -10,7 +10,7 @@ CONFIG_DIR = os.path.dirname(__file__)
 
 PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
 
-Logger.set_module('minecraft.properties')
+Logger.set_module('Mc Server.Properties')
 
 class PropertyOption:
     def __init__(self, name: str, value: str, until: Version = None, introduced: Version = None):
@@ -309,13 +309,7 @@ class Properties:
 
         :param properties_file: Path to the properties file.
         """
-        # Define the safe root directory
-        safe_root = CONFIG_DIR
-        # Normalize the path and ensure it is within the safe directory
-        normalized_path = os.path.normpath(os.path.join(safe_root, properties_file))
-        if not normalized_path.startswith(safe_root):
-            raise ValueError(f"Invalid path: {properties_file} is outside the allowed directory.")
-
+        normalized_path = os.path.normpath(properties_file)
         with open(normalized_path, 'w') as file:
             file.write("#Minecraft server properties\n")
             for prop in self.properties(mc_version).values():

@@ -49,7 +49,7 @@ PYTHON = $(PYTHON_PATH)python
 
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
-EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
+APP_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
 DEBUG_LOCAL_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-local-debug$(EXECUTABLE_EXTENSION)
 
 # if not defined, get the version from git
@@ -62,7 +62,6 @@ VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//; s/-dev+.*//')
 
 WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
 ARCHIVE = mc_srv_manager-$(VERSION_STR).tar.gz
-
 
 $(PYTHON_LIB)/build:
 	$(PYTHON_PATH)pip install build
@@ -122,15 +121,13 @@ dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LI
 	rm -rf $(TEMP_DIR)
 	@echo "Building archive package complete."
 
-
-$(EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
+$(APP_EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
 	@echo "Installing package..."
 	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
 build: dist/$(WHEEL) dist/$(ARCHIVE)
 	@echo "Build complete."
-
 
 client: $(WEB_DIST)
 	@echo "Client build complete."
@@ -140,20 +137,15 @@ server: $(SRV_DIST) $(CONFIG_DIST)
 
 
 
-# test-report.xml: $(EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+# test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
 # 	$(PYTHON) -m pytest --junitxml=test-report.xml tests
 
 
-install: $(EXECUTABLE)
+install: $(APP_EXECUTABLE)
 
-start: $(EXECUTABLE)
+start: install
 	@echo "Starting server..."
-	@$(EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json --module-level config:INFO
-# --module-level http_server:DEBUG
-
-start/debug: $(EXECUTABLE)
-	@echo "Starting debug tool..."
-	@$(DEBUG_LOCAL_EXECUTABLE) --module-level forge.properties:INFO --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(APP_EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json --module-level config:INFO --module-level minecraft.properties:DEBUG
 
 
 

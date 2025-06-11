@@ -8,7 +8,7 @@ from .database.types import ServerStatus
 from .minecraft.forge.server import ForgeServer
 from .utils.debug_tk import DebugTk, ask_for_choice
 
-Logger.set_module("forge server.debug interface")
+Logger.set_module("Forge Server.Debug Interface")
 
 BASE_PATH = __file__[:__file__.rfind('/')]  # get the base path of the server
 

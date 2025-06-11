@@ -8,7 +8,7 @@ import traceback
 
 from gamuLogger import Logger
 
-Logger.set_module("minecraft.rcon socket")
+Logger.set_module("Mc Server.Rcon Socket")
 
 Packet = collections.namedtuple("Packet", ["id", "type", "data"])
 
@@ -20,7 +20,10 @@ class RCON:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def open(self):
-        self.socket.connect((self.host, self.port))
+        try:
+            self.socket.connect((self.host, self.port))
+        except ConnectionRefusedError:
+            raise ConnectionError(f"Could not connect to RCON server at {self.host}:{self.port}. Is the server running and RCON enabled?") from None
         self.authenticate()
 
     def __send_packet(self, packet: Packet):

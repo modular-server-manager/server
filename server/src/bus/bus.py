@@ -1,16 +1,15 @@
 import threading as th
 import time
 from datetime import datetime
-from multiprocessing import shared_memory as shm
 from typing import Any, Callable
 
 from gamuLogger import Logger
 
 from ..utils.misc import is_types_equals
 from .bus_data import BusData
-from .events import Event, Events
+from .events import FILE_SEPARATOR, EncodedEvent, Event, Events
 
-Logger.set_module("bus")
+Logger.set_module("Bus.Interface")
 
 type Callback = Callable[..., Any]
 
@@ -21,9 +20,14 @@ class Bus:
         self.__shared_list_write = data.write_list    # write messages to the bus
         self.__shared_list_read = data.read_list      # read messages from the bus
 
+        self.__write_list_lock = data.write_list_lock  # lock for writing to the bus
+        self.__read_list_lock = data.read_list_lock    # lock for reading from the bus
+
         self.__memory_size = data.memory_size
         self.__empty_string = data.empty_string  # Define an empty string of max length
         self.__max_string_length = data.max_string_length
+        self.__name = data.name
+        self.__id = data.id
 
         self.__listen = False
         self.__thread = th.Thread(target=self.__read_incoming, daemon=True, name="BusListener")
@@ -38,9 +42,10 @@ class Bus:
         return f"Bus(subscribers={self.__subscribers})"
 
     def __move_forward(self):
-        for i in range(len(self.__shared_list_read) - 1):
-            self.__shared_list_read[i] = self.__shared_list_read[i+1]
-            self.__shared_list_read[-1] = self.__empty_string
+        with self.__read_list_lock:
+            for i in range(len(self.__shared_list_read) - 1):
+                self.__shared_list_read[i] = self.__shared_list_read[i+1]
+                self.__shared_list_read[-1] = self.__empty_string
 
     def __check_callback(self, event: Event, callback: Callback):
 
@@ -98,44 +103,82 @@ class Bus:
     def get_subscribers(self, event_id: int) -> list[Callback]:
         return self.__subscribers[event_id] if event_id in self.__subscribers else []
 
-    def trigger(self, event: Event, timeout : int = 5, **kwargs: Any) -> Any:
-        """
-        Trigger an event with the given name and arguments.
-        If the event requires a timestamp and it is not provided, it will be added automatically.
-        Returns the result of the first callback that returns a non-None value.
-        """
+
+    def __add_prefix(self, encoded: str, __to : int) -> str:
+        return f"{self.__id:02X}{FILE_SEPARATOR}{__to:02X}{FILE_SEPARATOR}{encoded}"
+
+    def __remove_prefix(self, encoded: str) -> tuple[int, int ,str]: # return (source_id, target_id, data)
+        parts = encoded.split(FILE_SEPARATOR, 2)
+        if len(parts) < 3:
+            raise ValueError("Encoded string does not have the expected prefix format.")
+        source_id = int(parts[0], 16)
+        target_id = int(parts[1], 16)
+        return source_id, target_id, parts[2]
+
+    def __write(self, encoded: EncodedEvent, __to : int) -> None:
+        # add the id at the beginning, followed by a 0 for the target
+        encoded_str = self.__add_prefix(encoded.string(), __to)
+
+        if len(encoded_str) > self.__max_string_length:
+            raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded_str)} bytes > {self.__max_string_length} bytes")
+
+        with self.__write_list_lock:
+            for i in range(len(self.__shared_list_write)):
+                if self.__shared_list_write[i] == self.__empty_string:
+                    self.__shared_list_write[i] = encoded_str
+                    break
+            else:
+                raise ValueError("No free position in shared list to send data.")
+
+    def __send(self, event: Event, __to : int, timeout : int = 5, **kwargs: Any) -> Any:
         if "timestamp" not in kwargs:
             for a in event.args:
-                if a.name == "timestamp" and a.type == "int":
-                    kwargs["timestamp"] = int(datetime.now().timestamp())
+                if a.name == "timestamp" and a.type == "datetime":
+                    kwargs["timestamp"] = datetime.now()
 
         encoded = Event.encode(event, **kwargs)
+
         if len(encoded) > self.__max_string_length:
             raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded)} bytes > {self.__max_string_length} bytes")
         Logger.debug(f"Triggering event {event.name} with arguments: {kwargs}")
-        Logger.trace(f"Encoded data: {encoded} (Length: {len(encoded)} bytes)")
-        for i in range(len(self.__shared_list_write)):
-            if self.__shared_list_write[i] == self.__empty_string:
-                self.__shared_list_write[i] = encoded
-                break
-        else:
-            raise ValueError("No free position in shared list to send data.")
+        Logger.trace(f"Raw data: {encoded} (Length: {len(encoded)} bytes)")
+        self.__write(encoded, __to)
 
-        if event.return_type != None:
+        if event.return_type != "None":
             res = self.wait_for(event.return_event(), timeout=timeout)  # Wait for the event to be processed and return the result
+            res = res['result'] if res is not None else None
             Logger.debug(f"Event {event.name} returned: {res}")
-            return res['result'] if res is not None else None
+            return res
         # res['result'] is of the type specified in the event's <return type="..." /> tag
         # or None if the timeout is reached or the event is not triggered
         else:
             Logger.debug(f"Event {event.name} triggered without return type, no waiting for result.")
             return None
 
+    def trigger(self, event: Event, timeout : int = 5, **kwargs: Any) -> Any:
+        """
+        Trigger an event with the given name and arguments.
+        If the event requires a timestamp and it is not provided, it will be added automatically.
+        Returns the result of the first callback that returns a non-None value.
+        """
+        return self.__send(event, 0, timeout=timeout, **kwargs) # 0 mean everyone will receive the message
+
     def __read_incoming(self):
         Logger.info("Bus listening started")
         while self.__listen:
             try:
-                msg = self.__shared_list_read[0]
+                with self.__read_list_lock:
+                    raw = self.__shared_list_read[0]
+                self.__move_forward()
+                if raw == self.__empty_string:
+                    time.sleep(0.01)
+                    continue
+                source_id, target_id, raw = self.__remove_prefix(raw)
+                if target_id not in (0, self.__id):
+                    Logger.error(f"Received a message that is not for this bus (target_id={target_id:02X}, this bus id={self.__id:02X}), ignoring it.")
+                    time.sleep(0.01)
+                    continue
+                msg = EncodedEvent(raw)
             except TypeError:
                 continue
             if msg != self.__empty_string:
@@ -145,17 +188,26 @@ class Bus:
                     Logger.debug(f"Received message: {event} with args: {args}")
                     Logger.trace(f"Raw data: {msg} (Length: {len(msg)} bytes)")
                     if event.id in self.__subscribers:
-                        for callback in self.__subscribers[event.id]:
-                            Logger.debug(f"Processing message {event} with callback {callback.__name__} and args {args}")
-                            result = callback(**args)
-                            Logger.debug(f"Callback {callback.__name__} returned: {result}")
-                            if result is not None and event.return_type != "None":
-                                self.trigger(event.return_event(), result=result)
+                        def a():
+                            self.__exec_callback(event, source_id, **args)
+                        t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
+                        t.start()
+                    else:
+                        Logger.debug(f"No subscribers for event {event.name}, skipping processing.")
+                        Logger.trace(f"List of current subscribers:\n{'\n'.join(f"{Events.get_event(event).name} ({event}): {', '.join(callback.__name__ for callback in callbacks)}" for event, callbacks in self.__subscribers.items())}")
                 except Exception as e:
-                    Logger.error(f"Error processing message {event} with {args}: {e}")
-            self.__move_forward()
+                    Logger.error(f"Error processing message {event} with {args}: {e.__class__.__name__} : {e}")
             time.sleep(0.01)
         Logger.info("Bus listening stopped")
+
+    def __exec_callback(self, event : Event, source_id : int, **args: Any) -> Any:
+        for callback in self.__subscribers[event.id]:
+            Logger.debug(f"Processing message {event} with callback {callback.__name__} and args {args}")
+            result = callback(**args)
+            Logger.debug(f"Callback {callback.__name__} returned: {result}")
+            if result is not None and event.return_type != "None":
+                self.__send(event.return_event(), source_id, result=result) # Send the result back to the source
+                break  # Stop after the first callback that returns a non-None value
 
     def wait_for(self, event: Event, timeout: float = -1) -> Any:
         """
@@ -172,7 +224,7 @@ class Bus:
         start_time = time.time()
         while result is None:
             if timeout > 0 and time.time() - start_time > timeout:
-                Logger.warning(f"Timeout waiting for event {event.name}, returning None")
+                Logger.warning(f"Timeout while waiting for event {event.name}, returning None")
                 break
             time.sleep(0.01)
 
@@ -183,6 +235,7 @@ class Bus:
         if not self.__listen:
             self.__listen = True
             self.__thread.start()
+            Logger.info("Bus is now listening for events")
         else:
             Logger.warning("Bus is already listening")
 
@@ -208,12 +261,12 @@ if __name__ == "__main__":
     from datetime import datetime
     bus1 = Bus()
 
-    def _get_players_1(timestamp: int, server_name: str) -> list[str]:
+    def _get_players_1(timestamp: datetime, server_name: str) -> list[str]:
         if server_name == "TestServer":
             return ["Player1", "Player2", "Player3"]
         return None
 
-    def _get_players_2(timestamp: int, server_name: str) -> list[str]:
+    def _get_players_2(timestamp: datetime, server_name: str) -> list[str]:
         if server_name == "TestServer2":
             return ["Player4", "Player5", "Player6"]
         return None
@@ -224,4 +277,4 @@ if __name__ == "__main__":
 
 
     bus2 = Bus()
-    print(bus2.trigger(Events["PLAYERS.LIST"], timestamp=int(datetime.now().timestamp()), server_name="TestServer2"))
+    print(bus2.trigger(Events["PLAYERS.LIST"], timestamp=datetime.now(), server_name="TestServer2"))

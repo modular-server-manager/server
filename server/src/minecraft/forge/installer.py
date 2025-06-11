@@ -1,12 +1,14 @@
 import os
+import secrets
 import subprocess
 
 from gamuLogger import Logger
 from version import Version
 
 from ..properties import Properties
+from ..vanilla.installer import set_eula, set_server_properties
 
-Logger.set_module("installer")
+Logger.set_module("Mc Server.Forge Installer")
 
 
 EULA="""#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://aka.ms/MinecraftEULA).
@@ -14,43 +16,7 @@ eula=true
 """
 
 
-def set_eula(installation_dir : str) -> None:
-    """
-    Patch the EULA file to accept the Minecraft EULA.
-
-    :param installation_dir: Directory where the server is installed.
-    """
-
-    eula_path = f"{installation_dir}/eula.txt"
-
-    with open(eula_path, "w") as eula_file:
-        eula_file.write(EULA)
-    Logger.debug(f"EULA file created at {eula_path}.")
-
-
-def set_server_properties(installation_dir : str, mc_version : Version) -> None:
-    """
-    Create a server.properties file with default settings.
-
-    :param installation_dir: Directory where the server is installed.
-    """
-
-    properties_path = f"{installation_dir}/server.properties"
-
-    properties = Properties()
-    properties.save(properties_path, mc_version)
-    Logger.debug(f"Server properties file created at {properties_path}.")
-
-
-def get_mc_version(installer_url : str) -> Version:
-    """
-    Extract the Minecraft version from the installer URL.
-    """
-    version_str = installer_url.split("/")[-1].split("-")[1]
-    return Version.from_string(version_str)
-
-
-def install(installer_url : str, installation_dir : str) -> None:
+def install(installer_url : str, installation_dir : str, mc_version : Version) -> None:
     """
     Install a Minecraft server using the provided installer URL.
 
@@ -83,7 +49,7 @@ def install(installer_url : str, installation_dir : str) -> None:
 
     # Set EULA and server properties
     set_eula(installation_dir)
-    set_server_properties(installation_dir, get_mc_version(installer_url))
+    set_server_properties(installation_dir, mc_version)
 
     Logger.info("Minecraft server installation completed successfully.")
 
@@ -93,4 +59,4 @@ def main():
     installer_url = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.0.0/forge-1.20.1-47.0.0-installer.jar"
     installation_dir = "/var/minecraft/test"
 
-    install(installer_url, installation_dir)
+    install(installer_url, installation_dir, Version.from_string("1.20.1"))

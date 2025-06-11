@@ -1,21 +1,25 @@
 import time
+from multiprocessing import Lock
 from multiprocessing import shared_memory as shm
 from multiprocessing.managers import SharedMemoryManager
+from random import randint
 
 from gamuLogger import Logger
 from singleton import Singleton
 
 from .bus_data import BusData
+from .events import FILE_SEPARATOR, EncodedEvent
 
 type SharedMemories = tuple[shm.ShareableList, shm.ShareableList]
 
-Logger.set_module("bus dispatcher")
+Logger.set_module("Bus.Dispatcher")
 
 class BusDispatcher(Singleton):
     def __init__(self, memory_size : int, max_string_length : int):
         if hasattr(self, "_BusDispatcher__shared_memories"):
             return
-        self.__shared_memories: dict[str, SharedMemories] = {}
+        self.__bus_datas: dict[str, BusData] = {}
+        self.__ids: dict[str, int] = {}  # Store IDs for each key
         # this dispatcher is responsible for managing shared memories for different keys. only him can create and release them.
         self.__manager = SharedMemoryManager()
         self.__manager.start()
@@ -28,45 +32,33 @@ class BusDispatcher(Singleton):
 
     def __del__(self):
         self.__manager.shutdown()
-        for key, (write_list, read_list) in self.__shared_memories.items():
-            write_list.shm.close()
-            read_list.shm.close()
-            write_list.shm.unlink()
-            read_list.shm.unlink()
-
-    def get_shared_memory(self, _for : str) -> SharedMemories:
-        """
-        Get a pair of shared memories (write and read) for the bus.
-        the first one is for writing messages to the bus,
-        the second one is for reading messages from the bus.
-        """
-        shared_list_write = self.__manager.ShareableList(
-            [self.__empty_string] * self.__memory_size
-        )
-        shared_list_read = self.__manager.ShareableList(
-            [self.__empty_string] * self.__memory_size
-        )
-        self.__shared_memories[_for] = (shared_list_write, shared_list_read)
-        return shared_list_write, shared_list_read
+        for key, bus_data in self.__bus_datas.items():
+            bus_data.write_list.shm.close()
+            bus_data.read_list.shm.close()
+            try:
+                bus_data.write_list.shm.unlink()
+                bus_data.read_list.shm.unlink()
+            except FileNotFoundError:
+                pass
 
     def release_shared_memory(self, _for: str):
         """
         Release the shared memory for the given key.
         """
-        if _for not in self.__shared_memories:
-            raise KeyError(f"No shared memory found for {_for}")
-        write_list, read_list = self.__shared_memories.pop(_for)
-        write_list.shm.close()
-        read_list.shm.close()
-        write_list.shm.unlink()
-        read_list.shm.unlink()
+        if _for not in self.__bus_datas:
+            raise KeyError(f"No data found for {_for}")
+        bus_data = self.__bus_datas.pop(_for)
+        bus_data.write_list.shm.close()
+        bus_data.read_list.shm.close()
+        bus_data.write_list.shm.unlink()
+        bus_data.read_list.shm.unlink()
         Logger.debug(f"Shared memory for {_for} released.")
 
     def release_all_shared_memories(self):
         """
         Release all shared memories.
         """
-        for key in list(self.__shared_memories.keys()):
+        for key in list(self.__bus_datas.keys()):
             self.release_shared_memory(key)
         Logger.debug("All shared memories released.")
 
@@ -74,43 +66,82 @@ class BusDispatcher(Singleton):
         """
         Get the bus data containing all shared memories.
         """
-        write_mem, read_mem = self.get_shared_memory(_for)
-        return BusData(
+
+        write_mem = self.__manager.ShareableList(
+            [self.__empty_string] * self.__memory_size
+        )
+        read_mem = self.__manager.ShareableList(
+            [self.__empty_string] * self.__memory_size
+        )
+
+        if _for not in self.__ids:
+            # Generate a random ID for the bus data
+            self.__ids[_for] = randint(1, 255)
+
+        bd =  BusData(
             write_list=write_mem,
             read_list=read_mem,
+            write_list_lock=Lock(),
+            read_list_lock=Lock(),
             memory_size=self.__memory_size,
-            max_string_length=self.__max_string_length
+            max_string_length=self.__max_string_length,
+            name=_for,
+            id= self.__ids[_for]
         )
+        self.__bus_datas[_for] = bd
+        return bd
 
     def __move_forward(self, key : str):
         """
         Move the messages in the shared memory forward.
         """
-        write_list, _ = self.__shared_memories[key]
-        for i in range(len(write_list) - 1):
-            write_list[i] = write_list[i + 1]
-        write_list[-1] = self.__empty_string
+        bus_data = self.__bus_datas[key]
+        write_list = bus_data.write_list
+        with bus_data.write_list_lock:
+            for i in range(len(write_list) - 1):
+                write_list[i] = write_list[i + 1]
+            write_list[-1] = self.__empty_string
+
+    def __get_source_target(self, encoded: EncodedEvent) -> tuple[int, int]:
+        """
+        Extract the source and target IDs from the encoded string.
+        The format is expected to be: "source_id:02X{FILE_SEPARATOR}target_id:02X{FILE_SEPARATOR}data".
+        """
+        parts = encoded.string().split(FILE_SEPARATOR, 2)
+        if len(parts) < 3:
+            raise ValueError("Encoded string does not have the expected prefix format.")
+        source_id = int(parts[0], 16)
+        target_id = int(parts[1], 16)
+        return source_id, target_id
 
     def mainloop(self):
         # write in read_list, read in write_list
         self.__running = True
         while self.__running:
-            for rec_key, (write_list, _) in self.__shared_memories.items():
-                msg = write_list[0]
-                if msg == self.__empty_string:
+            for rec_key, rec_bus_data in self.__bus_datas.items():
+                with rec_bus_data.write_list_lock:
+                    msg = EncodedEvent(rec_bus_data.write_list[0])
+                if msg.string() == self.__empty_string:
                     continue
                 Logger.debug(f"Processing messages from {rec_key}: {msg}")
-                for key, (_, read_list) in self.__shared_memories.items():
-                    if key == rec_key:
+                for key, bus_data in self.__bus_datas.items():
+                    if key == rec_key: # Skip the same key
+                        continue
+                    _, target_id = self.__get_source_target(msg)
+                    if target_id not in (0, self.__ids[key]):
+                        Logger.debug(f"Message {msg} not for {key}, skipping.")
                         continue
                     Logger.debug(f"Forwarding message {msg} to {key}")
-                    for i in range(len(read_list)):
-                        if read_list[i] == self.__empty_string:
-                            read_list[i] = msg
-                            Logger.trace(f"Message {msg} forwarded to {key} at index {i}")
-                            break
-                    else:
-                        Logger.warning(f"No empty slot found in {key} to forward message {msg}")
+                    with bus_data.read_list_lock:
+                        # Find the first empty slot in the read list
+                        for i in range(len(bus_data.read_list)):
+                            if bus_data.read_list[i] == self.__empty_string:
+                                bus_data.read_list[i] = msg.string()
+                                Logger.trace(f"Message {msg} forwarded to {key} at index {i}")
+                                Logger.trace(f"Current read list for {key}:\n{'\n'.join(str(EncodedEvent(s)) if s != self.__empty_string else 'EMPTY' for s in bus_data.read_list)}")
+                                break
+                        else:
+                            Logger.warning(f"No empty slot found in {key} to forward message {msg}")
                 self.__move_forward(rec_key)
             time.sleep(0.01)
 

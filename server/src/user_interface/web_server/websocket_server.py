@@ -4,7 +4,7 @@ from gamuLogger import Logger
 from ...bus import BusData
 from ..Base_interface import BaseInterface
 
-Logger.set_module("socket_server")
+Logger.set_module("User Interface.WebSock Server")
 
 class WebSocketServer(BaseInterface):
     def __init__(self, bus_data : BusData, database_path: str):

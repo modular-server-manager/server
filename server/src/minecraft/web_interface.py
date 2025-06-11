@@ -1,29 +1,21 @@
 import json
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from cache import Cache
 from gamuLogger import Logger
 from version import Version
 
-Logger.set_module("forge_reader")
+Logger.set_module("Mc Server.Web Interface")
 
 RE_MC_VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)$")
 RE_FORGE_VERSION = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.([0-9]+))?")
 
-class JsonEncoder(json.JSONEncoder):
-    def default(self, o : Any) -> str:
-        if isinstance(o, Version):
-            return str(o)
-        elif isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)
-
 class WebInterface:
-    base_url = "https://files.minecraftforge.net/net/minecraftforge/forge/"
+    base_mc_url = "https://mcversions.net"
 
     @staticmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
@@ -31,12 +23,10 @@ class WebInterface:
         """
         Fetches the list of Minecraft versions from the Forge website.
         """
-        Logger.set_module("forge_reader.mc_versions")
-
-        Logger.debug(f"Fetching {WebInterface.base_url} for Minecraft versions.")
-        response = requests.get(WebInterface.base_url)
+        Logger.debug(f"Fetching {WebInterface.base_mc_url} for Minecraft versions.")
+        response = requests.get(WebInterface.base_mc_url)
         if not response.ok:
-            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_url}. Status code: {response.status_code}")
+            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_mc_url}. Status code: {response.status_code}")
         Logger.trace(f"Response status code: {response.status_code}")
 
         html_content = response.text
@@ -45,38 +35,53 @@ class WebInterface:
 
         # find the first element with the class "sidebar-nav"
         soup = BeautifulSoup(html_content, 'html.parser')
-        sidebar_nav = soup.find(class_="sidebar-nav")
-        if not sidebar_nav:
-            raise ValueError("No sidebar-nav found in the HTML.")
-        # find all the links within the sidebar-nav
-        links = sidebar_nav.find_all('a') # type: ignore
-        # keep only the links where the text matches the regex
-        mc_versions : dict[Version, str] = {} # version : web page relative path
-        for link in links:
-            if RE_MC_VERSION.match(link.text):
-                Logger.debug(f"Found Minecraft version: {link.text}")
-                mc_versions[Version.from_string(link.text)] = link['href'] # type: ignore
+        # find the element with "Stable Releases" in the text
+        stable_list_header = soup.find(string="Stable Releases") # type: ignore
+        if not stable_list_header:
+            raise ValueError("Could not find 'Stable Releases' section in the HTML content.")
+        Logger.trace("Found 'Stable Releases' section in the HTML content.")
+        # get the next element after stable_list_header, which should be a <div>"
+        stable_list = stable_list_header.next # type: ignore
+        if not stable_list:
+            raise ValueError("Could not find the 'Stable Releases' list in the HTML content.")
+        Logger.trace("Found 'Stable Releases' list in the HTML content.")
 
-        if active := sidebar_nav.find(class_="elem-active"): # type: ignore
-            version = active.text.strip()
-            link = f"index_{version}.html"
-            if RE_MC_VERSION.match(version):
-                Logger.debug(f"Found Minecraft version: {version}")
-                mc_versions[Version.from_string(version)] = link
+        mc_versions : List[Version] = []
+        for element in stable_list.find_all("div", recursive=False):
+            version_element : Tag = next(element.children).find('p')
+            if not version_element:
+                Logger.trace("Found an element without a version number, skipping.")
+                continue
+            #get the text without inner HTML tags. example :
+            # <p class="text-xl leading-snug font-semibold"><span role="img" aria-label="sparkle">✨</span>1.21.5<br><span class="text-blue-300 text-xs"><time datetime="2025-03-25T12:14:58.000Z">2025-03-25</time></span></p>
+            for child in version_element.children:
+                if isinstance(child, str):
+                    version_text = child
+                    if version_text:
+                        break
+            if version_text == "No versions found":
+                continue
+            if version_text.count('.') == 1:
+                version_text = f"{version_text.strip()}.0"
+            if not (version_match := RE_MC_VERSION.match(version_text)):
+                raise ValueError(f"Invalid Minecraft version format: {version_text}")
 
+            version = Version.from_string(version_match.group(0))
+            mc_versions.append(version)
+            Logger.debug(f"Found Minecraft version: {version}")
         Logger.debug(f"Found {len(mc_versions)} Minecraft versions.")
-        Logger.trace(f"Found Minecraft versions: {mc_versions}")
         return mc_versions
 
     @staticmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_forge_versions(page_path : str) -> Dict[Version, dict[str, Any]]:
+    def get_forge_versions(mc_version : Version) -> Dict[Version, dict[str, bool|datetime|str]]:
         """
         Fetches the content of a specific Minecraft version page.
         :param page_path: Relative path to the version page
         :return: HTML content of the page
         """
-        Logger.set_module("forge_reader.forge_versions")
+
+        page_path = f"index_{mc_version}.html"
 
         Logger.debug(f"Fetching {WebInterface.base_url + page_path} for Forge versions.")
 
@@ -136,6 +141,35 @@ class WebInterface:
 
     @staticmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
+    def get_mc_installer_url(mc_version: Version) -> str:
+        """
+        Fetches the installer URL for a specific Minecraft and Forge version.
+        :param mc_version: Minecraft version
+        :param forge_version: Forge version
+        :return: Installer URL
+        """
+        mc_versions = WebInterface.get_mc_versions()
+        if mc_version not in mc_versions:
+            raise ValueError(f"Invalid Minecraft version: {mc_version}")
+
+        url = f"{WebInterface.base_mc_url}/download/{str(mc_version)}"
+
+        Logger.debug(f"Fetching {url} to get the installer link for Minecraft {mc_version}.")
+
+        response = requests.get(url)
+        if not response.ok:
+            raise ConnectionError(f"Failed to fetch data from {url}. Status code: {response.status_code}")
+        Logger.trace(f"Response status code: {response.status_code}")
+        html_content = response.text
+        Logger.trace("Scraping HTML content for the installer link.")
+        soup = BeautifulSoup(html_content, 'html.parser')
+        if download_btn := soup.find("a", string="Download Server Jar"):
+            return download_btn['href']
+        else:
+            raise ValueError("Could not find 'Download Server Jar' link in the HTML content.")
+
+    @staticmethod
+    @Cache(expire_in=timedelta(days=1)) # type: ignore
     def get_forge_installer_url(mc_version: Version, forge_version: Version) -> str:
         """
         Fetches the installer URL for a specific Minecraft and Forge version.
@@ -153,12 +187,3 @@ class WebInterface:
             raise ValueError(f"Invalid Forge version: {forge_version}")
 
         return forge_versions[forge_version]['installer']
-
-if __name__ == "__main__":
-    # list all Minecraft versions
-    mc_versions = WebInterface.get_mc_versions()
-    print("Minecraft versions:")
-    mc_versions = {version: page for version, page in mc_versions.items() if version >= Version(1, 7, 0)}
-    for version, page in mc_versions.items():
-        forge_versions = WebInterface.get_forge_versions(page)
-        print(f"  {version} ({len(forge_versions)})")

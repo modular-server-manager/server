@@ -11,7 +11,7 @@ from ..Base_interface import BaseInterface
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 
-Logger.set_module("server")
+Logger.set_module("User Interface.Web Server")
 
 class WebServer(HttpServer, WebSocketServer):
     def __init__(self, bus_data : BusData, database_path: str, port: int = 5000):
