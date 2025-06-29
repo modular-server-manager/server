@@ -18,7 +18,8 @@
 			"*.svg": "xml",
 			"*.hta": "html",
 			"*.template": "django-html",
-			"python.h": "c"
+			"python.h": "c",
+			"*/config.json": "jsonc"
 		}
 	}
 }

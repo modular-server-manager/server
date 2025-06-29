@@ -145,7 +145,10 @@ install: $(APP_EXECUTABLE)
 
 start: install
 	@echo "Starting server..."
-	@$(APP_EXECUTABLE)  --log-file server.log:TRACE -c /var/minecraft/config.json --module-level config:INFO --module-level minecraft.properties:DEBUG
+	@$(APP_EXECUTABLE)  --log-file server.log:TRACE \
+		-c /var/minecraft/config.json \
+		--module-level config:INFO \
+		--module-level minecraft.properties:DEBUG
 
 
 
