@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict
+from traceback import format_exc
 
 import argon2.exceptions
 from gamuLogger import Logger
@@ -72,7 +73,12 @@ class BaseInterface:
         """
         Start the interface.
         """
-        self.__bus.start()
+        Logger.info(f"Starting {self.__class__.__name__} interface.")
+        try:
+            self.__bus.start()
+        except Exception as e:
+            Logger.error(f"Error starting {self.__class__.__name__} interface: {e}")
+            Logger.debug(format_exc())
 
     def stop(self):
         """

@@ -26,7 +26,7 @@ class Core:
         # Initialize the bus dispatcher (will run in a separate thread)
         self.__bus_dispatcher = BusDispatcher(
             self.__config.get("bus.memory_size", default=8, set_if_not_found=True),
-            self.__config.get("bus.max_string_length", default=256, set_if_not_found=True)
+            self.__config.get("bus.max_string_length", default=8192, set_if_not_found=True) # default of 8KB
         )
         self.__bus_dispatcher_thread = th.Thread(
             target=self.__bus_dispatcher.mainloop,

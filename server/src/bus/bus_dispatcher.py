@@ -5,7 +5,6 @@ from multiprocessing.managers import SharedMemoryManager
 from random import randint
 
 from gamuLogger import Logger
-from singleton import Singleton
 
 from .bus_data import BusData
 from .events import FILE_SEPARATOR, EncodedEvent
@@ -14,7 +13,7 @@ type SharedMemories = tuple[shm.ShareableList, shm.ShareableList]
 
 Logger.set_module("Bus.Dispatcher")
 
-class BusDispatcher(Singleton):
+class BusDispatcher:
     def __init__(self, memory_size : int, max_string_length : int):
         if hasattr(self, "_BusDispatcher__shared_memories"):
             return

@@ -7,7 +7,6 @@ from typing import Any, Callable, List
 from xml.etree import ElementTree as ET
 
 from gamuLogger import Logger
-from singleton import Singleton
 from version import Version
 
 Logger.set_module("Bus.Events")
@@ -224,7 +223,7 @@ class Event:
         """
         return encoded.decode()
 
-class EventsType(Singleton):
+class EventsType:
 
     def __init__(self, xml_path: str):
         self.events : dict[int, Event] = {}

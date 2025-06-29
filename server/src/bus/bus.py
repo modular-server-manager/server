@@ -232,6 +232,7 @@ class Bus:
         return result
 
     def start(self):
+        Logger.trace(f"Starting bus listener thread\nbus hash : {self.__hash__()}\nthread name : {self.__thread.name}")
         if not self.__listen:
             self.__listen = True
             self.__thread.start()
