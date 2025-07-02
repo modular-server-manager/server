@@ -82,6 +82,7 @@ class BusDispatcher:
             read_list=read_mem,
             write_list_lock=Lock(),
             read_list_lock=Lock(),
+            _for=_for,
             memory_size=self.__memory_size,
             max_string_length=self.__max_string_length,
             name=_for,

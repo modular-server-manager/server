@@ -248,6 +248,18 @@ class HttpServer(BaseInterface):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
+        @self.__app.route('/api/list_mc_server_dirs', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        @self.request_auth(AccessLevel.USER)
+        def list_mc_server_dirs(token : str) -> FlaskReturnData:
+            Logger.trace(f"API request for path: {request.path}")
+            try:
+                dirs = self.list_mc_server_dirs()
+                return {"dirs": dirs}, HTTP.OK
+            except Exception as e:
+                Logger.error(f"Error processing API request for path {request.path}: {e}")
+                Logger.debug(f"Error details: {traceback.format_exc()}")
+                return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
+
         @self.__app.route('/api/create_server', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.OPERATOR)
         def create_new_server() -> FlaskReturnData:

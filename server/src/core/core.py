@@ -39,13 +39,10 @@ class Core:
         self.__bus = Bus(bus_data)
         self._srv_config = JSONConfig(self.__config.get("server_config_path"))
 
-        self.__ui_processes: Dict[str, tuple[mp.Process, BaseInterface]] = {}
-        self.__mc_servers  : Dict[str, tuple[mp.Process, BaseMcServer]]  = {}
+        self.__ui_processes: Dict[str, mp.Process] = {}
+        self.__mc_servers  : Dict[str, mp.Process] = {}
 
         self.__register_event_handlers()
-
-        self.__init_user_interfaces()
-        self.__init_mc_servers()
 
         Logger.info("Core initialized successfully.")
 
@@ -95,13 +92,14 @@ class Core:
 
 
 
-    def __init_user_interfaces(self):
+    def __start_user_interfaces(self):
         """
-        Initializes user interface modules based on the configuration.
+        Initializes and start user interface modules based on the configuration.
         This method is called when the core is started.
         """
         to_load : dict[str, dict[str, Any]] = self.__config.get("user_interface_modules")
         for module_type, config in to_load.items():
+            Logger.info(f"Initializing user interface module {config['name']} of type {module_type}...")
             if module_type not in UserInterfaceModules:
                 Logger.warning(f"User interface module {module_type} unknown. Skipping.")
                 continue
@@ -116,35 +114,39 @@ class Core:
             module_conf["database_path"] = self.__config.get("client_database_path")
             try:
                 module_class = UserInterfaceModules[module_type]
-                module_instance = module_class(bus_data=bus_data, **module_conf)
+                def __start_ui_module():
+                    module_instance = module_class(bus_data=bus_data, **module_conf)
+                    module_instance.start()
 
                 p = mp.Process(
-                    target=module_instance.start,
+                    target=__start_ui_module,
                     name=f"{module_type}",
                     daemon=True
                 )
-                self.__ui_processes[config['name']] = (p, module_instance)  # Store the process and instance
+                Logger.info(f"Starting user interface module {config['name']}...")
+                p.start()  # Start the process
+                self.__ui_processes[config['name']] = p  # Store the process
             except Exception as e:
                 Logger.fatal(f"Failed to initialize user interface module {config['name']}: {e}")
                 Logger.debug(traceback.format_exc())
                 self.stop()  # Stop the core if a critical UI module fails to start
             else:
-                Logger.info(f"User interface module {config['name']} initiated successfully.")
+                Logger.info(f"User interface module {config['name']} initiated and started successfully.")
 
-    def __start_user_interfaces(self):
-        """
-        Starts all user interface modules.
-        This method is called when the core is started.
-        """
-        Logger.info("Starting user interface modules...")
-        self.__init_user_interfaces()
-        for ui_name, (ui_process, ui_instance) in self.__ui_processes.items():
-            if not ui_process.is_alive():
-                Logger.info(f"Starting user interface process {ui_name}...")
-                ui_process.start()
-                Logger.info(f"User interface process {ui_name} started with PID {ui_process.pid}.")
-            else:
-                Logger.warning(f"User interface process {ui_name} is already running with PID {ui_process.pid}.")
+    # def __start_user_interfaces(self):
+    #     """
+    #     Starts all user interface modules.
+    #     This method is called when the core is started.
+    #     """
+    #     Logger.info("Starting user interface modules...")
+    #     self.__init_user_interfaces()
+    #     for ui_name, ui_process in self.__ui_processes.items():
+    #         if not ui_process.is_alive():
+    #             Logger.info(f"Starting user interface process {ui_name}...")
+    #             ui_process.start()
+    #             Logger.info(f"User interface process {ui_name} started with PID {ui_process.pid}.")
+    #         else:
+    #             Logger.warning(f"User interface process {ui_name} is already running with PID {ui_process.pid}.")
 
     def __stop_user_interfaces(self):
         """
@@ -152,10 +154,9 @@ class Core:
         This method is called when the core is stopped.
         """
         Logger.info("Stopping user interface modules...")
-        for ui_name, (ui_process, ui_instance) in self.__ui_processes.items():
+        for ui_name, ui_process in self.__ui_processes.items():
             if ui_process.is_alive():
                 Logger.info(f"Stopping user interface process {ui_name} with PID {ui_process.pid}...")
-                ui_instance.stop()
                 ui_process.join(timeout=30)  # Wait for the process to finish
                 if ui_process.is_alive():
                     Logger.warning(f"User interface process {ui_name} did not stop gracefully. Terminating...")
@@ -165,7 +166,7 @@ class Core:
 
 
 
-    def __init_mc_servers(self):
+    def __start_mc_servers(self):
         """
         Initializes Minecraft servers based on the configuration.
         This method is called when the core is started.
@@ -182,36 +183,22 @@ class Core:
                     bus_data = self.__bus_dispatcher.get_bus_data(server_name)
                     ram = self._srv_config.get(f"{server_name}.ram", default=1024, set_if_not_found=True)
                     mc_version = Version.from_string(self._srv_config.get(f"{server_name}.mc_version"))
-                    srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                    def __start_mc_server():
+                        srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                        srv.start()
                     p = mp.Process(
-                        target=srv.start,
+                        target=__start_mc_server,
                         name=f"Server_{server_name}",
                         daemon=True
                     )
-                    self.__mc_servers[server_name] = (p, srv)  # Store the process and instance
+                    Logger.info(f"Starting Minecraft server {server_name} of type {server_type} at {server_path} with RAM {ram}MB...")
+                    p.start()  # Start the process
+                    self.__mc_servers[server_name] = p  # Store the process
                 except Exception as e:
                     Logger.error(f"Failed to init server {server_name}: {e}")
                     Logger.debug(traceback.format_exc())
             else:
                 Logger.info(f"Server {server_name} is not set to autostart. Skipping.")
-
-    def __start_mc_servers(self):
-        """
-        Starts all Minecraft servers defined in the configuration.
-        This method is called after the bus is initialized.
-        """
-        Logger.info("Starting Minecraft servers...")
-        for srv_name, (srv_process, srv_instance) in self.__mc_servers.items():
-            if not srv_process.is_alive():
-                Logger.info(f"Starting Minecraft server {srv_name}...")
-                try:
-                    srv_process.start()
-                    Logger.info(f"Minecraft server {srv_name} started with PID {srv_process.pid}.")
-                except Exception as e:
-                    Logger.error(f"Failed to start Minecraft server {srv_name}: {e}")
-                    Logger.debug(traceback.format_exc())
-            else:
-                Logger.warning(f"Minecraft server {srv_name} is already running with PID {srv_process.pid}.")
 
     def __stop_mc_servers(self):
         """
@@ -219,10 +206,9 @@ class Core:
         This method is called when the core is stopped.
         """
         Logger.info("Stopping Minecraft servers...")
-        for srv_name, (srv_process, srv_instance) in self.__mc_servers.items():
+        for srv_name, srv_process in self.__mc_servers.items():
             if srv_process.is_alive():
                 Logger.info(f"Stopping Minecraft server {srv_name} with PID {srv_process.pid}...")
-                srv_instance.stop()
                 srv_process.join(timeout=30)
                 if srv_process.is_alive():
                     Logger.warning(f"Minecraft server {srv_name} did not stop gracefully. Terminating...")
@@ -246,6 +232,7 @@ class Core:
         self.__bus.register(Events['SERVER.INFO'], self.on_server_info)
         self.__bus.register(Events['GET_VERSIONS.MINECRAFT'], self.on_get_version_minecraft)
         self.__bus.register(Events['GET_VERSIONS.FORGE'], self.on_get_version_forge)
+        self.__bus.register(Events['GET_DIRECTORIES.MINECRAFT'], self.on_get_minecraft_directories)
 
     def __is_server_path_valid(self, server_path: str) -> bool:
         """
@@ -497,7 +484,12 @@ class Core:
         """
         Returns the Minecraft version of the specified server.
         """
-        return WebInterface.get_mc_versions().keys()
+        try:
+            return WebInterface.get_mc_versions()
+        except Exception as e:
+            Logger.error(f"Failed to fetch Minecraft versions: {e}")
+            Logger.debug(traceback.format_exc())
+            return []
 
     def on_get_version_forge(self, timestamp: datetime, mc_version: Version) -> dict[Version, dict[str, Any]]:
         """
@@ -505,4 +497,27 @@ class Core:
         :param mc_version: Minecraft version
         :return: Dictionary of Forge versions with their properties
         """
-        return WebInterface.get_forge_versions(mc_version)
+        try:
+            return WebInterface.get_forge_versions(mc_version)
+        except Exception as e:
+            Logger.error(f"Failed to fetch Forge versions for Minecraft version {mc_version}: {e}")
+            Logger.debug(traceback.format_exc())
+            return {}
+
+    def on_get_minecraft_directories(self, timestamp: datetime) -> list[str]:
+        """
+        Returns a list of all available Minecraft server directories.
+        This is useful for the user interface to provide a selection of directories.
+        """
+        try:
+            data = []
+            Logger.trace("Fetching Minecraft server directories from configuration.")
+            for i in range(len(self.__config.get("minecraft_servers_dirs", []))):
+                dir_path = self.__config.get(f"minecraft_servers_dirs.{i}")
+                data.append(os.path.normpath(dir_path))
+            Logger.trace(f"Found Minecraft server directories: {data}")
+            return data
+        except Exception as e:
+            Logger.error(f"Failed to get Minecraft directories: {e}")
+            Logger.debug(traceback.format_exc())
+            return []

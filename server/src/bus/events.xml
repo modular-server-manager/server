@@ -271,4 +271,12 @@
             <return type="Dict[Version, Dict[str, Any]]" />
         </event>
     </namespace>
+    <namespace name="GET_DIRECTORIES">
+        <event name="MINECRAFT" id="0x0401">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01" />
+            </args>
+            <return type="list[str]" />
+        </event>
+    </namespace>
 </events>

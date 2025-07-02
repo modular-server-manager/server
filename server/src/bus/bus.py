@@ -2,6 +2,7 @@ import threading as th
 import time
 from datetime import datetime
 from typing import Any, Callable
+import traceback
 
 from gamuLogger import Logger
 
@@ -30,7 +31,7 @@ class Bus:
         self.__id = data.id
 
         self.__listen = False
-        self.__thread = th.Thread(target=self.__read_incoming, daemon=True, name="BusListener")
+        self.__thread = th.Thread(target=self.__read_incoming, daemon=True, name=f"BusListener_{data._for}")
 
         self.__subscribers: dict[int, list[Callback]] = {}
         Logger.info("Bus initialized")
@@ -107,7 +108,7 @@ class Bus:
     def __add_prefix(self, encoded: str, __to : int) -> str:
         return f"{self.__id:02X}{FILE_SEPARATOR}{__to:02X}{FILE_SEPARATOR}{encoded}"
 
-    def __remove_prefix(self, encoded: str) -> tuple[int, int ,str]: # return (source_id, target_id, data)
+    def __read_prefix(self, encoded: str) -> tuple[int, int ,str]: # return (source_id, target_id, data)
         parts = encoded.split(FILE_SEPARATOR, 2)
         if len(parts) < 3:
             raise ValueError("Encoded string does not have the expected prefix format.")
@@ -165,6 +166,7 @@ class Bus:
 
     def __read_incoming(self):
         Logger.info("Bus listening started")
+        Logger.trace(f"bus hash: {self.__hash__()}\nthread name: {self.__thread.name}\nthread hash: {self.__thread.__hash__()}")
         while self.__listen:
             try:
                 with self.__read_list_lock:
@@ -173,7 +175,7 @@ class Bus:
                 if raw == self.__empty_string:
                     time.sleep(0.01)
                     continue
-                source_id, target_id, raw = self.__remove_prefix(raw)
+                source_id, target_id, raw = self.__read_prefix(raw)
                 if target_id not in (0, self.__id):
                     Logger.error(f"Received a message that is not for this bus (target_id={target_id:02X}, this bus id={self.__id:02X}), ignoring it.")
                     time.sleep(0.01)
@@ -191,6 +193,7 @@ class Bus:
                         def a():
                             self.__exec_callback(event, source_id, **args)
                         t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
+                        Logger.trace(f"Starting thread for event {event.name} with args {args}\nthread hash: {t.__hash__()}\nthread name: {t.name}")
                         t.start()
                     else:
                         Logger.debug(f"No subscribers for event {event.name}, skipping processing.")
@@ -232,10 +235,16 @@ class Bus:
         return result
 
     def start(self):
-        Logger.trace(f"Starting bus listener thread\nbus hash : {self.__hash__()}\nthread name : {self.__thread.name}")
-        if not self.__listen:
+        Logger.trace(f"Starting bus listener thread\nbus hash : {self.__hash__()}\nthread name : {self.__thread.name}\nthread hash : {self.__thread.__hash__()}")
+        if not self.__listen and not self.__thread.is_alive():
             self.__listen = True
-            self.__thread.start()
+            try:
+                self.__thread.start()
+            except RuntimeError as e:
+                Logger.error(f"Failed to start bus listener thread: {e}")
+                Logger.trace(f"Thread:\n alive: {self.__thread.is_alive()}\n name: {self.__thread.name}\n hash: {self.__thread.__hash__()}\n repr: {self.__thread.__repr__()}")
+                Logger.trace(traceback.format_exc())
+                return
             Logger.info("Bus is now listening for events")
         else:
             Logger.warning("Bus is already listening")

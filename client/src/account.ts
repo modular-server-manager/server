@@ -6,6 +6,11 @@ ensure_token();
 
 // fill the span #name with the username
 API.get_user_info().then((response) => {
+    if (!response) {
+        console.error("No user info found.");
+        alert("An error occurred while fetching user information.");
+        return;
+    }
     console.log("User info response:", response);
     const {username} = response;
     const name = document.getElementById("name") as HTMLSpanElement;

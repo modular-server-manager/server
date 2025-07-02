@@ -16,10 +16,11 @@ RE_FORGE_VERSION = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.([0-9]+))?")
 
 class WebInterface:
     base_mc_url = "https://mcversions.net"
+    base_forge_url = "https://files.minecraftforge.net/net/minecraftforge/forge/"
 
     @staticmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_mc_versions() -> Dict[Version, str]:
+    def get_mc_versions() -> List[Version]:
         """
         Fetches the list of Minecraft versions from the Forge website.
         """
@@ -83,11 +84,11 @@ class WebInterface:
 
         page_path = f"index_{mc_version}.html"
 
-        Logger.debug(f"Fetching {WebInterface.base_url + page_path} for Forge versions.")
+        Logger.debug(f"Fetching {WebInterface.base_forge_url + page_path} for Forge versions.")
 
-        response = requests.get(WebInterface.base_url + page_path)
+        response = requests.get(WebInterface.base_forge_url + page_path)
         if not response.ok:
-            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_url + page_path}. Status code: {response.status_code}")
+            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_forge_url + page_path}. Status code: {response.status_code}")
         Logger.trace(f"Response status code: {response.status_code}")
 
         Logger.trace("Scraping HTML content for Forge versions.")
@@ -134,7 +135,7 @@ class WebInterface:
             Logger.debug(f"Found Forge version: {version}.")
             Logger.trace(f"Recommended: {data['recommended']}, Latest: {data['latest']}, Bugged: {data['bugged']}, Time: {data['time']}, Installer: {data['installer']}")
 
-            forge_versions[Version.from_string(version)] = data
+            forge_versions[version] = data
 
         Logger.debug(f"Found {len(forge_versions)} Forge versions.")
         return forge_versions

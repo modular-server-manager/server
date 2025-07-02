@@ -124,8 +124,8 @@ class EventArg:
         "string":       (str, str),
         "Version":      (Version.from_string, str),
         "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
-        "datetime":    (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
-        "__default":    (json_loads, lambda v: json_dumps(v, ensure_ascii=False, separators=(',', ':'), default=str))
+        "datetime":     (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
+        "__default":    (json_loads, lambda d: json_dumps(d, ensure_ascii=False, separators=(',', ':'), default=str))
     }
 
     def __init__(self, name: str, type: str, id : int):

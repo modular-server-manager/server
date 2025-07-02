@@ -1,4 +1,6 @@
 import Cookies from './cookie.js';
+import { AccessLevel, User, ServerInfo, AccessLevelFromString } from './types.js';
+
 
 export default class API {
     /**
@@ -182,18 +184,19 @@ export default class API {
     public static async get_user_info() {
         if (!Cookies.has('token')) {
             console.error('No token found in cookies');
-            return false;
+            return null;
         }
         const {data, status} = await API.get('/api/user', {});
         if (status === 200) {
-            return data;
+            data['access_level'] = AccessLevelFromString(data['access_level']);
+            return data as User;
         }
         else if (status === 500) {
             console.error('Error getting user info:', data['message']);
             throw new Error('Error getting user info');
         }
         else{
-            return false;
+            return null;
         }
     }
 
@@ -212,6 +215,78 @@ export default class API {
         }
         else{
             return {};
+        }
+    }
+
+    public static async get_mc_server_dirs() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return [];
+        }
+        const {data, status} = await API.get('/api/list_mc_server_dirs', {});
+        if (status === 200) {
+            return data["dirs"] as string[];
+        }
+        else if (status === 500) {
+            console.error('Error getting Minecraft server directories:', data['message']);
+            throw new Error('Error getting Minecraft server directories');
+        }
+        else{
+            return [];
+        }
+    }
+
+    public static async create_server(server_info: ServerInfo) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post('/api/create_server', server_info);
+        if (status === 201) {
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error creating server:', data['message']);
+            throw new Error('Error creating server');
+        }
+        else{
+            return false;
+        }
+    }
+
+    public static async get_mc_versions() {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return [];
+        }
+        const {data, status} = await API.get('/api/mc_versions', {});
+        if (status === 200) {
+            return data["versions"] as string[];
+        }
+        else if (status === 500) {
+            console.error('Error getting Minecraft versions:', data['message']);
+            throw new Error('Error getting Minecraft versions');
+        }
+        else{
+            return [];
+        }
+    }
+
+    public static async get_forge_versions(mc_version: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return [];
+        }
+        const {data, status} = await API.get(`/api/forge_versions/${mc_version}`, {});
+        if (status === 200) {
+            return data["versions"] as string[];
+        }
+        else if (status === 500) {
+            console.error('Error getting Forge versions:', data['message']);
+            throw new Error('Error getting Forge versions');
+        }
+        else{
+            return [];
         }
     }
 

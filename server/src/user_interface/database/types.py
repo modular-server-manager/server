@@ -4,9 +4,9 @@ from enum import IntEnum
 
 
 class AccessLevel(IntEnum):
-    USER = 0        # Global : Can see servers status       McServer : Nothing
-    ADMIN = 1       # Global : Nothing                      McServer : Can start/stop servers, see logs, manage settings
-    OPERATOR = 2    # Global : Can manage users             McServer : Can create and delete servers
+    USER = 0        # Global: Can see servers status
+    ADMIN = 1       # Global: Can start/stop servers, see logs, manage settings
+    OPERATOR = 2    # Global: Can manage users and create and delete servers
 
 
 class User:

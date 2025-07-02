@@ -310,3 +310,9 @@ class BaseInterface:
             Logger.debug(f"Server {name} created successfully.")
         else:
             raise ValueError(f"Failed to create server {name}. It may already exist or there was an error in the parameters.")
+
+    def list_mc_server_dirs(self) -> list[str]:
+        """
+        List all available Minecraft server directories.
+        """
+        return self.trigger("GET_DIRECTORIES.MINECRAFT") or []
