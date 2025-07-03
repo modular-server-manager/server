@@ -165,6 +165,9 @@ async function init_misc() {
         createServerButton.addEventListener("click", on_create_server_button);
         const main = document.querySelector("main") as HTMLDivElement;
         main.appendChild(createServerButton);
+
+        const createServerCancelButton = document.getElementById("create-server-cancel") as HTMLButtonElement;
+        createServerCancelButton.addEventListener("click", hide_create_server_form);
     }
     else{
         console.log(`User does not have permission to create a server (access level: ${userInfo?.access_level.valueOf()} < AccessLevel.OPERATOR (${AccessLevel.OPERATOR.valueOf()})).`);

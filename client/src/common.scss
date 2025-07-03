@@ -26,7 +26,8 @@ main {
 }
 
 button,
-input {
+input,
+select {
     background: $mc-button-bg-active;
     color: $mc-font-color;
     border: 2px solid $mc-button-border;
@@ -49,7 +50,6 @@ input {
     &.active {
         background: $mc-button-bg-active;
         border-color: $mc-button-border-hover;
-        border-width: 3px;
     }
 
     &[type="text"],
