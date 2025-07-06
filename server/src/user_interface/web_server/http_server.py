@@ -302,9 +302,9 @@ class HttpServer(BaseInterface):
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
 
                 self.create_server(
-                    server_name=server_name,
-                    server_type=server_type,
-                    server_path=server_path,
+                    name=server_name,
+                    type=server_type,
+                    path=server_path,
                     autostart=autostart,
                     mc_version=mc_version,
                     modloader_version=modloader_version,

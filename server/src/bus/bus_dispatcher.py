@@ -3,10 +3,11 @@ from multiprocessing import Lock
 from multiprocessing import shared_memory as shm
 from multiprocessing.managers import SharedMemoryManager
 from random import randint
+import traceback
 
 from gamuLogger import Logger
 
-from .bus_data import BusData
+from .bus_data import BusData, BusMessagePrefix
 from .events import FILE_SEPARATOR, EncodedEvent
 
 type SharedMemories = tuple[shm.ShareableList, shm.ShareableList]
@@ -105,14 +106,12 @@ class BusDispatcher:
     def __get_source_target(self, encoded: EncodedEvent) -> tuple[int, int]:
         """
         Extract the source and target IDs from the encoded string.
-        The format is expected to be: "source_id:02X{FILE_SEPARATOR}target_id:02X{FILE_SEPARATOR}data".
         """
-        parts = encoded.string().split(FILE_SEPARATOR, 2)
-        if len(parts) < 3:
-            raise ValueError("Encoded string does not have the expected prefix format.")
-        source_id = int(parts[0], 16)
-        target_id = int(parts[1], 16)
-        return source_id, target_id
+        prefix_str, data = encoded.string().split(FILE_SEPARATOR, 1)
+        
+        prefix = BusMessagePrefix.from_string(prefix_str)
+
+        return prefix.source_id, prefix.target_id
 
     def mainloop(self):
         # write in read_list, read in write_list
@@ -124,25 +123,29 @@ class BusDispatcher:
                 if msg.string() == self.__empty_string:
                     continue
                 Logger.debug(f"Processing messages from {rec_key}: {msg}")
-                for key, bus_data in self.__bus_datas.items():
-                    if key == rec_key: # Skip the same key
-                        continue
-                    _, target_id = self.__get_source_target(msg)
-                    if target_id not in (0, self.__ids[key]):
-                        Logger.debug(f"Message {msg} not for {key}, skipping.")
-                        continue
-                    Logger.debug(f"Forwarding message {msg} to {key}")
-                    with bus_data.read_list_lock:
-                        # Find the first empty slot in the read list
-                        for i in range(len(bus_data.read_list)):
-                            if bus_data.read_list[i] == self.__empty_string:
-                                bus_data.read_list[i] = msg.string()
-                                Logger.trace(f"Message {msg} forwarded to {key} at index {i}")
-                                Logger.trace(f"Current read list for {key}:\n{'\n'.join(str(EncodedEvent(s)) if s != self.__empty_string else 'EMPTY' for s in bus_data.read_list)}")
-                                break
-                        else:
-                            Logger.warning(f"No empty slot found in {key} to forward message {msg}")
-                self.__move_forward(rec_key)
+                try:
+                    for key, bus_data in self.__bus_datas.items():
+                        if key == rec_key: # Skip the same key
+                            continue
+                        _, target_id = self.__get_source_target(msg)
+                        if target_id not in (0, self.__ids[key]):
+                            Logger.debug(f"Message {msg} not for {key}, skipping.")
+                            continue
+                        Logger.debug(f"Forwarding message {msg} to {key}")
+                        with bus_data.read_list_lock:
+                            # Find the first empty slot in the read list
+                            for i in range(len(bus_data.read_list)):
+                                if bus_data.read_list[i] == self.__empty_string:
+                                    bus_data.read_list[i] = msg.string()
+                                    Logger.trace(f"Message {msg} forwarded to {key} at index {i}")
+                                    Logger.trace(f"Current read list for {key}:\n{'\n'.join(str(EncodedEvent(s)) if s != self.__empty_string else 'EMPTY' for s in bus_data.read_list)}")
+                                    break
+                            else:
+                                Logger.warning(f"No empty slot found in {key} to forward message {msg}")
+                    self.__move_forward(rec_key)
+                except Exception as e:
+                    Logger.error(f"Error processing message {msg} from {rec_key}: {e}")
+                    Logger.trace(traceback.format_exc())
             time.sleep(0.01)
 
     def stop(self):

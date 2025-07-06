@@ -3,11 +3,12 @@ import time
 from datetime import datetime
 from typing import Any, Callable
 import traceback
+import random
 
 from gamuLogger import Logger
 
 from ..utils.misc import is_types_equals
-from .bus_data import BusData
+from .bus_data import BusData, BusMessagePrefix
 from .events import FILE_SEPARATOR, EncodedEvent, Event, Events
 
 Logger.set_module("Bus.Interface")
@@ -105,20 +106,26 @@ class Bus:
         return self.__subscribers[event_id] if event_id in self.__subscribers else []
 
 
-    def __add_prefix(self, encoded: str, __to : int) -> str:
-        return f"{self.__id:02X}{FILE_SEPARATOR}{__to:02X}{FILE_SEPARATOR}{encoded}"
+    def __add_prefix(self, encoded: str, prefix : BusMessagePrefix) -> str:
+        return f"{prefix}{FILE_SEPARATOR}{encoded}"
 
-    def __read_prefix(self, encoded: str) -> tuple[int, int ,str]: # return (source_id, target_id, data)
-        parts = encoded.split(FILE_SEPARATOR, 2)
-        if len(parts) < 3:
-            raise ValueError("Encoded string does not have the expected prefix format.")
-        source_id = int(parts[0], 16)
-        target_id = int(parts[1], 16)
-        return source_id, target_id, parts[2]
+    def __read_prefix(self, encoded: str) -> tuple[BusMessagePrefix, str]:
+        """
+        Splits the encoded string into its prefix and data components.
+        """
+        prefix_str, data = encoded.split(FILE_SEPARATOR, 1)
+        prefix = BusMessagePrefix.from_string(prefix_str)
+        return prefix, data
 
-    def __write(self, encoded: EncodedEvent, __to : int) -> None:
+    def __write(self, raw_msg: str, __to : int, fragment_number: int, fragment_count: int, msg_id : int):
         # add the id at the beginning, followed by a 0 for the target
-        encoded_str = self.__add_prefix(encoded.string(), __to)
+        prefix = BusMessagePrefix(source_id=self.__id,
+                                  target_id=__to,
+                                  message_id=msg_id,
+                                  fragment_number=fragment_number,
+                                  fragment_count=fragment_count)
+        encoded_str = self.__add_prefix(raw_msg, prefix)
+        Logger.trace(f"Writing message (with prefix) to bus: {' '.join(format(ord(c), '02X') for c in encoded_str)} (Length: {len(encoded_str)} bytes)")
 
         if len(encoded_str) > self.__max_string_length:
             raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded_str)} bytes > {self.__max_string_length} bytes")
@@ -139,11 +146,21 @@ class Bus:
 
         encoded = Event.encode(event, **kwargs)
 
-        if len(encoded) > self.__max_string_length:
-            raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded)} bytes > {self.__max_string_length} bytes")
+        # if len(encoded) > self.__max_string_length:
+        #     raise ValueError(f"Encoded event data exceeds memory size limit: {len(encoded)} bytes > {self.__max_string_length} bytes")
         Logger.debug(f"Triggering event {event.name} with arguments: {kwargs}")
         Logger.trace(f"Raw data: {encoded} (Length: {len(encoded)} bytes)")
-        self.__write(encoded, __to)
+        if len(encoded) + BusMessagePrefix.length() <= self.__max_string_length:
+            parts = [encoded.string()]
+        else:
+            # Split the encoded string into fragments if it exceeds the max length
+            parts = [encoded.string()[i:i + self.__max_string_length - BusMessagePrefix.length()] for i in range(0, len(encoded.string()), self.__max_string_length - BusMessagePrefix.length())]
+            Logger.debug(f"Encoded event data split into {len(parts)} fragments due to size limit.")
+
+        message_id = random.randint(0, 255)  # Generate a random message ID for the event
+
+        for i, part in enumerate(parts):
+            self.__write(part, __to, i, len(parts), message_id)
 
         if event.return_type != "None":
             res = self.wait_for(event.return_event(), timeout=timeout)  # Wait for the event to be processed and return the result
@@ -167,6 +184,7 @@ class Bus:
     def __read_incoming(self):
         Logger.info("Bus listening started")
         Logger.trace(f"bus hash: {self.__hash__()}\nthread name: {self.__thread.name}\nthread hash: {self.__thread.__hash__()}")
+        buffer : dict[int, tuple[int, str]] = {} # msg_id : (remaining_fragment, raw_data)
         while self.__listen:
             try:
                 with self.__read_list_lock:
@@ -175,12 +193,30 @@ class Bus:
                 if raw == self.__empty_string:
                     time.sleep(0.01)
                     continue
-                source_id, target_id, raw = self.__read_prefix(raw)
-                if target_id not in (0, self.__id):
-                    Logger.error(f"Received a message that is not for this bus (target_id={target_id:02X}, this bus id={self.__id:02X}), ignoring it.")
+                prefix, raw = self.__read_prefix(raw)
+                if prefix.target_id not in (0, self.__id):
+                    Logger.error(f"Received a message that is not for this bus (target_id={prefix.target_id:02X}, this bus id={self.__id:02X}), ignoring it.")
                     time.sleep(0.01)
                     continue
-                msg = EncodedEvent(raw)
+                if prefix.fragment_count == 1:
+                    msg = EncodedEvent(raw)
+                else:
+                    if prefix.message_id not in buffer:
+                        if prefix.fragment_number != 0:
+                            Logger.error(f"Received a fragment with fragment_number={prefix.fragment_number} but no previous fragments for message_id={prefix.message_id}, ignoring it.")
+                            time.sleep(0.01)
+                            continue
+                        buffer[prefix.message_id] = (prefix.fragment_count - 1, raw)
+                    else:
+                        remaining, data = buffer[prefix.message_id]
+                        data += raw
+                        remaining -= 1
+                        if remaining == 0:
+                            del buffer[prefix.message_id]
+                            msg = EncodedEvent(data)
+                        else:
+                            buffer[prefix.message_id] = (remaining, data)
+                            continue
             except TypeError:
                 continue
             if msg != self.__empty_string:
@@ -191,7 +227,11 @@ class Bus:
                     Logger.trace(f"Raw data: {msg} (Length: {len(msg)} bytes)")
                     if event.id in self.__subscribers:
                         def a():
-                            self.__exec_callback(event, source_id, **args)
+                            try:
+                                self.__exec_callback(event, prefix.source_id, **args)
+                            except Exception as e:
+                                Logger.error(f"Error processing event {event.name} with args {args}: {e.__class__.__name__} : {e}")
+                                Logger.trace(traceback.format_exc())
                         t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
                         Logger.trace(f"Starting thread for event {event.name} with args {args}\nthread hash: {t.__hash__()}\nthread name: {t.name}")
                         t.start()
