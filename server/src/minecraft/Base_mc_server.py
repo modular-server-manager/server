@@ -52,6 +52,7 @@ class BaseMcServer(ABC):
         "on_player_ban": "PLAYERS.BAN",
         "on_player_pardon": "PLAYERS.PARDON",
         "on_player_list": "PLAYERS.LIST",
+        "on_started_at": "SERVER.STARTED_AT",
     }
 
     def __init__(self, name : str, path : str, ram : int, mc_version : Version, bus_data : BusData):
@@ -61,6 +62,7 @@ class BaseMcServer(ABC):
         self.__name = name
         self.__path = path
         self._ServerStatus = ServerStatus.STOPPED
+        self.__started_at : datetime = None
         self.__register_callbacks()
 
     @property
@@ -85,6 +87,7 @@ class BaseMcServer(ABC):
             Logger.error(f"Server \"{self.name}\" failed to start.")
             return
         self.__bus.trigger(Events["SERVER.STARTED"], server_name = self.name)
+        self.__started_at = datetime.now()
         self._after_start()
         Logger.info(f"Server \"{self.name}\" started")
         self.__wait_for_stop()
@@ -126,6 +129,7 @@ class BaseMcServer(ABC):
         while self._ServerStatus not in (ServerStatus.STOPPED, ServerStatus.ERROR):
             time.sleep(0.2)
         self.__bus.trigger(Events["SERVER.STOPPED"], server_name = self.name)
+        self.__started_at = None
         self.__bus.stop()
         Logger.info(f"Server \"{self.name}\" stopped with status: {self._ServerStatus.name}")
 
@@ -143,6 +147,14 @@ class BaseMcServer(ABC):
     @property
     def path(self) -> str:
         return self.__path
+    
+    @property
+    def started_at(self) -> datetime:
+        """
+        Get the datetime when the server was started.
+        :return: The datetime when the server was started, or None if the server has not been started.
+        """
+        return self.__started_at
 
     def __on_ping(self, timestamp: datetime, server_name: str) -> str:
         """
@@ -164,6 +176,20 @@ class BaseMcServer(ABC):
                 continue
         # Register the ping callback
         self.__bus.register(Events["SERVER.PING"], self.__on_ping)
+
+    def on_started_at(self, timestamp: datetime, server_name: str) -> datetime:
+        """
+        Callback for the STARTED_AT event.
+        This method is called when the server starts and can be overridden by subclasses.
+        :param timestamp: The timestamp when the server started.
+        :param server_name: The name of the server.
+        :return: The timestamp when the server started.
+        """
+        if server_name == self.name:
+            Logger.info(f"Server {self.name} started at {timestamp}.")
+            return self.__started_at
+        Logger.debug(f"Started at event received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
+        return None
 
 
 def main():

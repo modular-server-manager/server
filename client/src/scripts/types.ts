@@ -32,6 +32,7 @@ interface ServerInfo {
     mc_version: string;
     modloader_version: string;
     ram: number;
+    started_at: Date | null; // Nullable to handle servers that haven't been started yet
 }
 
 export { AccessLevel, User, ServerInfo, AccessLevelFromString };

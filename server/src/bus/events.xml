@@ -157,6 +157,13 @@
             </args>
             <return type="None" />
         </event>
+        <event name="STARTED_AT" id="0x0105">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01" />
+                <arg name="server_name" type="str" id="0x02" />
+            </args>
+            <return type="datetime" />
+        </event>
     </namespace>
     <namespace name="CONSOLE">
         <event name="MESSAGE_RECEIVED" id="0x0101">

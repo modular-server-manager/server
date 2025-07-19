@@ -513,6 +513,11 @@ class Core:
             "mc_version": Version.from_string(srv_info['mc_version']),
             "modloader_version": Version.from_string(srv_info['modloader_version']),
             "ram": srv_info['ram'],
+            "started_at": self.__bus.trigger(
+                Events['SERVER.STARTED_AT'],
+                server_name=server_name,
+                timeout=0.5  # Wait for 0.5 seconds for the server to respond
+            ),
         }
 
     def on_get_version_minecraft(self, timestamp: datetime) -> list[Version]:

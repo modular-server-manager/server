@@ -290,4 +290,22 @@ export default class API {
         }
     }
 
+    public static async get_server_info(server_name: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return null;
+        }
+        const {data, status} = await API.get(`/api/server/${server_name}`, {});
+        if (status === 200) {
+            return data as ServerInfo;
+        }
+        else if (status === 500) {
+            console.error('Error getting server info:', data['message']);
+            throw new Error('Error getting server info');
+        }
+        else{
+            return null;
+        }
+    }
+
 }
