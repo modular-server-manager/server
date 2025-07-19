@@ -142,7 +142,7 @@ class WebInterface:
 
     @staticmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_mc_installer_url(mc_version: Version) -> str:
+    def get_mc_installer_url(mc_version: Version, _: Version = None) -> str:
         """
         Fetches the installer URL for a specific Minecraft and Forge version.
         :param mc_version: Minecraft version
@@ -188,3 +188,13 @@ class WebInterface:
             raise ValueError(f"Invalid Forge version: {forge_version}")
 
         return forge_versions[forge_version]['installer']
+
+    @staticmethod
+    @Cache(expire_in=timedelta(days=1)) # type: ignore
+    def get_fabric_installer_url(mc_version: Version, fabric_version: Version) -> str:
+        """
+        Fetches the Fabric installer URL for a specific Minecraft version.
+        :param mc_version: Minecraft version
+        :return: Fabric installer URL
+        """
+        raise NotImplementedError("Fabric installer URL fetching is not implemented yet.")

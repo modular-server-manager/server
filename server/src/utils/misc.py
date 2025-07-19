@@ -1,4 +1,5 @@
 import datetime as dt
+import random
 
 from gamuLogger import Logger, debug_func
 
@@ -87,6 +88,16 @@ def is_types_equals(a: str, b : str) -> bool:
     class_name_b = __get_class_name(b)
 
     return class_name_a.lower() == class_name_b.lower()
+
+
+def gen_id(length: int = 16) -> str:
+    """
+    Generate a random hexadecimal ID of the specified length.
+    Default length is 16 characters.
+    """
+    if length <= 0:
+        raise ValueError("Length must be a positive integer")
+    return ''.join(random.choice('0123456789abcdef') for _ in range(length))
 
 
 if __name__ == "__main__":

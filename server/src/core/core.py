@@ -11,8 +11,9 @@ from gamuLogger import Logger
 from version import Version
 
 from ..bus import Bus, BusDispatcher, Events
-from ..minecraft import (BaseMcServer, McInstallersModules, McServersModules,
-                         ServerStatus, WebInterface)
+from ..utils.misc import gen_id
+from ..minecraft import (McInstallersModules, McServersModules, McInstallersUrls,
+                         BaseMcServer, ServerStatus, WebInterface)
 from ..user_interface import BaseInterface, UserInterfaceModules
 
 Logger.set_module("Core.Core")
@@ -248,9 +249,11 @@ class Core:
             Logger.error("Server path must be a string.")
             return False
 
+        allowed_dirs = self.__get_mc_dirs()
+
         # for mc_dir in self.__config.get("minecraft_servers_dirs"): # must be in one of these directories
-        if not any(server_path.startswith(mc_dir) for mc_dir in self.__config.get("minecraft_servers_dirs", [])):
-            Logger.error(f"Server path {server_path} is not in the allowed directories: {self.__config.get('minecraft_servers_dirs')}")
+        if not any(server_path.startswith(mc_dir) for mc_dir in allowed_dirs):
+            Logger.error(f"Server path {server_path} is not in the allowed directories: {allowed_dirs}")
             return False
 
         return True
@@ -271,6 +274,20 @@ class Core:
             timeout=0.5 # if the server does not respond within 0.5 second, consider it offline
         )
         return ServerStatus.from_string(pinged) if pinged else ServerStatus.STOPPED
+
+    def __get_mc_dirs(self) -> List[str]:
+        try:
+            data = []
+            Logger.trace("Fetching Minecraft server directories from configuration.")
+            for i in range(len(self.__config.get("minecraft_servers_dirs", []))):
+                dir_path = self.__config.get(f"minecraft_servers_dirs.{i}")
+                data.append(os.path.normpath(dir_path))
+            Logger.trace(f"Found Minecraft server directories: {data}")
+            return data
+        except Exception as e:
+            Logger.error(f"Failed to get Minecraft directories: {e}")
+            Logger.debug(traceback.format_exc())
+            return []
 
     def on_server_start(self, timestamp : datetime, server_name: str):
         """
@@ -328,41 +345,60 @@ class Core:
         mc_version : Version,
         modloader_version: Version,
         ram: int,
-    ) -> bool:
-        mc_versions : Dict[Version, str] = WebInterface.get_mc_versions()
+    ) -> None:
+        mc_versions : List[Version] = WebInterface.get_mc_versions()
+        server_id = gen_id()
+        
+        # data validation
         if mc_version not in mc_versions:
-            Logger.error(f"Invalid Minecraft version: {mc_version}. Available versions: {list(mc_versions.keys())}")
-            return False
-        url = mc_versions[mc_version]
+            Logger.error(f"Invalid Minecraft version: {mc_version}. Available versions: {mc_versions}")
+            return
         if server_type not in McInstallersModules:
             Logger.error(f"Unknown server type: {server_type}. Available types: {list(McInstallersModules.keys())}")
-            return False
+            return
         if server_name in self._srv_config:
             Logger.error(f"Server with name {server_name} already exists.")
-            return False
+            return
         if not self.__is_server_path_valid(server_path):
             Logger.error(f"Invalid server path: {server_path}. Must be in one of the allowed directories.")
-            return False
-        if not os.path.exists(server_path):
-            try:
-                os.makedirs(server_path, exist_ok=True)
-            except Exception as e:
-                Logger.error(f"Failed to create server directory {server_path}: {e}")
-                return False
+            return
         if not isinstance(ram, int) or ram <= 0:
             Logger.error(f"Invalid RAM value: {ram}. Must be a positive integer.")
-            return False
+            return
 
+
+        server_path = os.path.join(server_path, server_id)
+        if os.path.exists(server_path):
+            Logger.error(f"Server path {server_path} already exists.")
+            return
+        
+        Logger.info(f"Creating server {server_name} of type {server_type} at {server_path}")
+        self.__bus.trigger(
+                Events['SERVER.CREATING'],
+                server_name=server_name,
+                server_type=server_type,
+                server_path=server_path,
+                autostart=autostart,
+                mc_version=mc_version,
+                modloader_version=modloader_version,
+                ram=ram,
+            )
+        
+        os.makedirs(server_path, exist_ok=True)
+        
         try:
+            url = McInstallersUrls[server_type](mc_version, modloader_version)
             McInstallersModules[server_type](
-                installer_url=url,
-                installation_dir=server_path,
+                url,
+                server_path,
+                mc_version
             )
         except Exception as e:
             Logger.error(f"Failed to install server {server_name} of type {server_type}: {e}")
-            return False
+            return
         else:
             self._srv_config.set(server_name, {
+                "id": server_id,
                 "type": server_type,
                 "path": server_path,
                 "created_at": datetime.now().isoformat(),
@@ -384,7 +420,6 @@ class Core:
             )
 
             Logger.info(f"Server {server_name} created successfully.")
-            return True
 
     def on_server_delete(self, timestamp : datetime, server_name: str):
         """
@@ -509,15 +544,4 @@ class Core:
         Returns a list of all available Minecraft server directories.
         This is useful for the user interface to provide a selection of directories.
         """
-        try:
-            data = []
-            Logger.trace("Fetching Minecraft server directories from configuration.")
-            for i in range(len(self.__config.get("minecraft_servers_dirs", []))):
-                dir_path = self.__config.get(f"minecraft_servers_dirs.{i}")
-                data.append(os.path.normpath(dir_path))
-            Logger.trace(f"Found Minecraft server directories: {data}")
-            return data
-        except Exception as e:
-            Logger.error(f"Failed to get Minecraft directories: {e}")
-            Logger.debug(traceback.format_exc())
-            return []
+        return self.__get_mc_dirs()

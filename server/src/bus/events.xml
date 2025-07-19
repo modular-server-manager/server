@@ -1,6 +1,7 @@
 <?xml version="1.0" ?>
 <events>
     <namespace name="SERVER">
+    
         <event name="STARTING" id="0x0001">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
@@ -70,7 +71,7 @@
                 <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
                 <arg name="ram" type="int" id="0x08" />
             </args>
-            <return type="bool" />
+            <return type="None" />
         </event>
         <event name="DELETE" id="0x000A">
             <args>
@@ -142,6 +143,19 @@
                 <arg name="server_name" type="str" id="0x02" />
             </args>
             <return type="Dict[str, Any]" />
+        </event>
+        <event name="CREATING" id="0x0013">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01" />
+                <arg name="server_name" type="str" id="0x02" />
+                <arg name="server_type" type="str" id="0x03" />
+                <arg name="server_path" type="str" id="0x04" />
+                <arg name="autostart" type="bool" id="0x05" />
+                <arg name="mc_version" type="Version" id="0x06" />
+                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="ram" type="int" id="0x08" />
+            </args>
+            <return type="None" />
         </event>
     </namespace>
     <namespace name="CONSOLE">
