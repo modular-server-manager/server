@@ -17,7 +17,7 @@
 			"*.vdf": "vdf",
 			"*.svg": "xml",
 			"*.hta": "html",
-			"*.template": "django-html",
+			"*.template": "html",
 			"python.h": "c",
 			"*/config.json": "jsonc"
 		}
