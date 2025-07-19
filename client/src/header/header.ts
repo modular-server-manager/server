@@ -1,5 +1,5 @@
-import API from "./api.js";
-import Cookies from "./cookie.js";
+import API from "../scripts/api.js";
+import Cookies from "../scripts/cookie.js";
 
 const disconnectBtn = document.getElementById('disconnect') as HTMLButtonElement;
 

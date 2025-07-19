@@ -134,8 +134,8 @@ class HttpServer(BaseInterface):
 
         @self.__app.route('/app/') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         def index():
-            Logger.trace("asking for index.html, redirecting to /app/dashboard.html")
-            return static_proxy('dashboard.html')
+            Logger.trace("asking for index.html, redirecting to /app/dashboard")
+            return static_proxy('dashboard')
 
         @self.__app.route('/app/<path:path>') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         def static_proxy(path : str):
@@ -156,9 +156,27 @@ class HttpServer(BaseInterface):
                 if not os.path.exists(full_path):
                     if os.path.exists(f"{full_path}.html"):
                         full_path = f"{full_path}.html"
+                    # elif full_path.endswith('.css') or full_path.endswith('.js'):
+                    elif any(full_path.endswith(ext) for ext in ['.css', '.js', '.css.map']):
+                        # /client/login.js -> /client/login/login.js
+                        filename = '.'.join(os.path.basename(full_path).split('.')[:-1])
+                        full_path = os.path.join(os.path.dirname(full_path), filename, os.path.basename(full_path))
+                        if not os.path.exists(full_path):
+                            Logger.trace(f"File not found: {full_path}")
+                            return "File not found", HTTP.NOT_FOUND
                     else:
                         Logger.trace(f"File not found: {full_path}")
                         return "File not found", HTTP.NOT_FOUND
+                
+                if os.path.isdir(full_path):
+                    # If the path is a directory, serve the index.html file inside it
+                    index_file = os.path.join(full_path, 'index.html')
+                    if os.path.exists(index_file):
+                        full_path = index_file
+                    else:
+                        Logger.trace(f"Directory requested without index file: {full_path}")
+                        return "Directory requested without index file", HTTP.BAD_REQUEST
+                Logger.trace(f"Serving file: {full_path}")
 
                 content = pathlib.Path(full_path).read_bytes()
                 mimetype = guess_type(path)[0] or 'text/html'
@@ -168,6 +186,14 @@ class HttpServer(BaseInterface):
                 Logger.error(f"Error serving file {path}: {e}")
                 return "Internal Server Error", HTTP.INTERNAL_SERVER_ERROR
 
+        @self.__app.route('/<path:path>') #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        def static_fallback(path: str):
+            """
+            Fallback route for static files.
+            This will serve files from the static folder if they exist.
+            """
+            Logger.trace(f"Fallback for static file: {path}")
+            return static_proxy(path)
 
     def __config_api_route(self):
         self.__config_api_route_user()

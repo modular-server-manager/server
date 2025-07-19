@@ -1,5 +1,5 @@
-import Cookies from './cookie.js';
-import API from './api.js';
+import Cookies from '../scripts/cookie.js';
+import API from '../scripts/api.js';
 
 // Check if the user is already logged in
 const token = Cookies.get('token');

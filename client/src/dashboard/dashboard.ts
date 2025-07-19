@@ -1,6 +1,6 @@
-import ensure_token from "./ensure_token.js";
-import API from "./api.js";
-import { AccessLevel, ServerInfo } from "./types.js";
+import ensure_token from "../scripts/ensure_token.js";
+import API from "../scripts/api.js";
+import { AccessLevel, ServerInfo } from "../scripts/types.js";
 
 ensure_token();
 

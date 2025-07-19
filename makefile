@@ -1,14 +1,12 @@
-
-
 .PHONY: all build clean client server tests
 
 all: build
 
 TEMP_DIR = build
 
-WEB_SRC_TS = $(wildcard client/src/*.ts)
-WEB_SRC_HTML = $(wildcard client/src/*.template.html)
-WEB_SRC_SASS = $(wildcard client/src/*.scss)
+WEB_SRC_TS = $(wildcard client/src/**/*.ts)
+WEB_SRC_HTML = $(wildcard client/src/**/*.template.html)
+WEB_SRC_SASS = $(wildcard client/src/**/*.scss)
 WEB_ASSETS = $(wildcard client/src/assets/*)
 
 WEB_DIST_JS = $(patsubst client/src/%.ts,mc_srv_manager/client/%.js,$(WEB_SRC_TS))
@@ -34,10 +32,10 @@ TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 
 
 # HTML TEMPLATES DEPENDENCIES
-mc_srv_manager/client/account.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/dashboard.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/server.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/login.html: client/src/metadata.template
+mc_srv_manager/client/account/index.html:   client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/dashboard/index.html: client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/server/index.html:    client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/login/index.html:     client/src/metadata.template client/src/header/header.template
 
 
 
@@ -76,14 +74,14 @@ mc_srv_manager/client/%.html: client/src/%.template.html
 	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
 mc_srv_manager/client/%.js: client/src/%.ts
-	@mkdir -p $(@D)
+	@mkdir -p $(dir $@)
 	@echo "Compiling $< to $@"
-	@tsc --outDir $(@D) $< --module es6 --target es6 --strict --sourceMap
+	@tsc --outDir mc_srv_manager/client $< --module es6 --target es6 --strict
 
 mc_srv_manager/client/%.css: client/src/%.scss
 	@mkdir -p $(@D)
 	@echo "Compiling $< to $@"
-	@sass $< $@
+	@sass $< $@ --no-source-map
 
 mc_srv_manager/%.py: server/src/%.py
 	@mkdir -p $(@D)
@@ -153,37 +151,6 @@ start: install
 
 
 # tests: clean-tests test-report.xml
-
-
-
-# client dev
-client/dist/%.js: client/src/%.ts
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@tsc --outDir $(@D) $< --module es6 --target es6 --strict
-
-client/dist/%.css: client/src/%.scss
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@sass $< $@
-
-client/dist/assets/%: client/src/assets/%
-	@mkdir -p $(@D)
-	@echo "Copying $< to $@"
-	@cp $< $@
-
-client/dist/%.html: client/src/%.template.html
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
-
-
-client-dev: $(WEB_DEV_DIST)
-	@echo "Client dev build complete."
-	@npm run start --prefix client
-
-client-dev-clean:
-	rm -rf client/dist
 
 
 clean:

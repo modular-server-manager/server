@@ -47,8 +47,12 @@ class Template:
 
         for match in RE_INSTRUCTION.finditer(template):
             instruction = match.group('instruction')
-            result = self.eval(instruction, self.page)
-            template = template.replace(match.group(0), str(result))
+            try:
+                result = self.eval(instruction, self.page)
+            except Exception as e:
+                raise RuntimeError(f"Error evaluating instruction '{instruction}' in template '{self.template_name}': {e}")
+            else:
+                template = template.replace(match.group(0), str(result))
         return template
 
 

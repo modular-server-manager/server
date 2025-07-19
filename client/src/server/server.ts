@@ -1,5 +1,5 @@
-import ensure_token from "./ensure_token.js";
-import API from "./api.js";
+import ensure_token from "../scripts/ensure_token.js";
+import API from "../scripts/api.js";
 
 ensure_token();
 

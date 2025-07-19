@@ -1,3 +1,4 @@
+<link rel="stylesheet" href="header.css" />
 <header class="dashboard-header">
     <button id="dashboard" onclick="window.location.href='dashboard.html'" {{"disabled" if page.name == "dashboard" else ""}}>
         Dashboard
