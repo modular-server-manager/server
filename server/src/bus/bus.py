@@ -231,7 +231,7 @@ class Bus:
                                 self.__exec_callback(event, prefix.source_id, **args)
                             except Exception as e:
                                 Logger.error(f"Error processing event {event.name} with args {args}: {e.__class__.__name__} : {e}")
-                                Logger.trace(traceback.format_exc())
+                                Logger.debug(traceback.format_exc())
                         t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
                         Logger.trace(f"Starting thread for event {event.name} with args {args}\nthread hash: {t.__hash__()}\nthread name: {t.name}")
                         t.start()
@@ -283,7 +283,7 @@ class Bus:
             except RuntimeError as e:
                 Logger.error(f"Failed to start bus listener thread: {e}")
                 Logger.trace(f"Thread:\n alive: {self.__thread.is_alive()}\n name: {self.__thread.name}\n hash: {self.__thread.__hash__()}\n repr: {self.__thread.__repr__()}")
-                Logger.trace(traceback.format_exc())
+                Logger.debug(traceback.format_exc())
                 return
             Logger.info("Bus is now listening for events")
         else:

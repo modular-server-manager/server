@@ -186,7 +186,6 @@ class BaseMcServer(ABC):
         :return: The timestamp when the server started.
         """
         if server_name == self.name:
-            Logger.info(f"Server {self.name} started at {timestamp}.")
             return self.__started_at
         Logger.debug(f"Started at event received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
         return None

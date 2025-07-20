@@ -18,16 +18,16 @@ class WebInterface:
     base_mc_url = "https://mcversions.net"
     base_forge_url = "https://files.minecraftforge.net/net/minecraftforge/forge/"
 
-    @staticmethod
+    @classmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_mc_versions() -> List[Version]:
+    def get_mc_versions(cls) -> List[Version]:
         """
         Fetches the list of Minecraft versions from the Forge website.
         """
-        Logger.debug(f"Fetching {WebInterface.base_mc_url} for Minecraft versions.")
-        response = requests.get(WebInterface.base_mc_url)
+        Logger.debug(f"Fetching {cls.base_mc_url} for Minecraft versions.")
+        response = requests.get(cls.base_mc_url)
         if not response.ok:
-            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_mc_url}. Status code: {response.status_code}")
+            raise ConnectionError(f"Failed to fetch data from {cls.base_mc_url}. Status code: {response.status_code}")
         Logger.trace(f"Response status code: {response.status_code}")
 
         html_content = response.text
@@ -73,9 +73,9 @@ class WebInterface:
         Logger.debug(f"Found {len(mc_versions)} Minecraft versions.")
         return mc_versions
 
-    @staticmethod
+    @classmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_forge_versions(mc_version : Version) -> Dict[Version, dict[str, bool|datetime|str]]:
+    def get_forge_versions(cls, mc_version : Version) -> Dict[Version, dict[str, bool|datetime|str]]:
         """
         Fetches the content of a specific Minecraft version page.
         :param page_path: Relative path to the version page
@@ -84,11 +84,11 @@ class WebInterface:
 
         page_path = f"index_{mc_version}.html"
 
-        Logger.debug(f"Fetching {WebInterface.base_forge_url + page_path} for Forge versions.")
+        Logger.debug(f"Fetching {cls.base_forge_url + page_path} for Forge versions.")
 
-        response = requests.get(WebInterface.base_forge_url + page_path)
+        response = requests.get(cls.base_forge_url + page_path)
         if not response.ok:
-            raise ConnectionError(f"Failed to fetch data from {WebInterface.base_forge_url + page_path}. Status code: {response.status_code}")
+            raise ConnectionError(f"Failed to fetch data from {cls.base_forge_url + page_path}. Status code: {response.status_code}")
         Logger.trace(f"Response status code: {response.status_code}")
 
         Logger.trace("Scraping HTML content for Forge versions.")
@@ -118,6 +118,7 @@ class WebInterface:
             if not version_match:
                 raise ValueError(f"Invalid Forge version format: {version}")
             version = version_match.group(0)
+            version = Version.from_string(version)
 
             download_time = row.find('td', class_='download-time') # type: ignore
             data['time'] = datetime.strptime(download_time['title'], "%Y-%m-%d %H:%M:%S") # type: ignore
@@ -140,20 +141,20 @@ class WebInterface:
         Logger.debug(f"Found {len(forge_versions)} Forge versions.")
         return forge_versions
 
-    @staticmethod
+    @classmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_mc_installer_url(mc_version: Version, _: Version = None) -> str:
+    def get_mc_installer_url(cls, mc_version: Version, _: Version = None) -> str:
         """
         Fetches the installer URL for a specific Minecraft and Forge version.
         :param mc_version: Minecraft version
         :param forge_version: Forge version
         :return: Installer URL
         """
-        mc_versions = WebInterface.get_mc_versions()
+        mc_versions = cls.get_mc_versions()
         if mc_version not in mc_versions:
             raise ValueError(f"Invalid Minecraft version: {mc_version}")
 
-        url = f"{WebInterface.base_mc_url}/download/{str(mc_version)}"
+        url = f"{cls.base_mc_url}/download/{str(mc_version)}"
 
         Logger.debug(f"Fetching {url} to get the installer link for Minecraft {mc_version}.")
 
@@ -169,29 +170,28 @@ class WebInterface:
         else:
             raise ValueError("Could not find 'Download Server Jar' link in the HTML content.")
 
-    @staticmethod
+    @classmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_forge_installer_url(mc_version: Version, forge_version: Version) -> str:
+    def get_forge_installer_url(cls, mc_version: Version, forge_version: Version) -> str:
         """
-        Fetches the installer URL for a specific Minecraft and Forge version.
-        :param mc_version: Minecraft version
-        :param forge_version: Forge version
-        :return: Installer URL
+        Fetches the installer URL for a specific Minecraft and Forge version.  
+        :param mc_version: The Minecraft version to get the Forge installer for  
+        :param forge_version: The version of Forge to get the installer for  
+        :return: The URL of the Forge installer for the specified Minecraft version
         """
-        mc_versions = WebInterface.get_mc_versions()
+        mc_versions : List[Version] = cls.get_mc_versions()
         if mc_version not in mc_versions:
             raise ValueError(f"Invalid Minecraft version: {mc_version}")
 
-        page_path = mc_versions[mc_version]
-        forge_versions = WebInterface.get_forge_versions(page_path)
+        forge_versions : Dict[Version, dict[str, bool|datetime|str]] = cls.get_forge_versions(mc_version)
         if forge_version not in forge_versions:
             raise ValueError(f"Invalid Forge version: {forge_version}")
 
         return forge_versions[forge_version]['installer']
 
-    @staticmethod
+    @classmethod
     @Cache(expire_in=timedelta(days=1)) # type: ignore
-    def get_fabric_installer_url(mc_version: Version, fabric_version: Version) -> str:
+    def get_fabric_installer_url(cls, mc_version: Version, fabric_version: Version) -> str:
         """
         Fetches the Fabric installer URL for a specific Minecraft version.
         :param mc_version: Minecraft version

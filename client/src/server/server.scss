@@ -1,1 +1,11 @@
 @use '../common.scss';
+
+h1 {
+    text-align: center;
+}
+
+.elements {
+    display: inline-block;
+    margin: 10px;
+    text-align: center;
+}

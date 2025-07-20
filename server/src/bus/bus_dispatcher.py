@@ -145,7 +145,7 @@ class BusDispatcher:
                     self.__move_forward(rec_key)
                 except Exception as e:
                     Logger.error(f"Error processing message {msg} from {rec_key}: {e}")
-                    Logger.trace(traceback.format_exc())
+                    Logger.debug(traceback.format_exc())
             time.sleep(0.01)
 
     def stop(self):

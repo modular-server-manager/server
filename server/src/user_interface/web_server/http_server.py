@@ -344,6 +344,50 @@ class HttpServer(BaseInterface):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
+        @self.__app.route('/api/start_server/<path:server_name>', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        @self.request_auth(AccessLevel.ADMIN)
+        def start_server(server_name: str) -> FlaskReturnData:
+            Logger.trace(f"API request for path: {request.path}")
+            try:
+                self.start_server(server_name)
+                return {"message": "Server started"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Start server error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
+            except Exception as e:
+                Logger.error(f"Error starting server: {e}")
+                Logger.debug(f"Error details: {traceback.format_exc()}")
+                return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
+
+        @self.__app.route('/api/stop_server/<path:server_name>', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        @self.request_auth(AccessLevel.ADMIN)
+        def stop_server(server_name: str) -> FlaskReturnData:
+            Logger.trace(f"API request for path: {request.path}")
+            try:
+                self.stop_server(server_name)
+                return {"message": "Server stopped"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Stop server error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
+            except Exception as e:
+                Logger.error(f"Error stopping server: {e}")
+                Logger.debug(f"Error details: {traceback.format_exc()}")
+                return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
+
+        @self.__app.route('/api/restart_server/<path:server_name>', methods=['POST']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
+        @self.request_auth(AccessLevel.ADMIN)
+        def restart_server(server_name: str) -> FlaskReturnData:
+            Logger.trace(f"API request for path: {request.path}")
+            try:
+                self.restart_server(server_name)
+                return {"message": "Server restarted"}, HTTP.OK
+            except ValueError as ve:
+                Logger.debug(f"Restart server error: {ve}")
+                return {"message": str(ve)}, HTTP.BAD_REQUEST
+            except Exception as e:
+                Logger.error(f"Error restarting server: {e}")
+                Logger.debug(f"Error details: {traceback.format_exc()}")
+                return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
 ###################################################################################################
 # endregion: server

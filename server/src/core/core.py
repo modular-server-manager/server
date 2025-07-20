@@ -166,6 +166,59 @@ class Core:
                 Logger.info(f"User interface process {ui_name} stopped successfully.")
 
 
+    def __start_server(self, server_name: str):
+        """
+        Starts the specified server.
+        :param server_name: Name of the server to start
+        """
+        Logger.info(f"Initializing server {server_name}...")
+        try:
+            server_type = self._srv_config.get(f"{server_name}.type")
+            server_path = self._srv_config.get(f"{server_name}.path")
+
+            Server = McServersModules[server_type]
+            bus_data = self.__bus_dispatcher.get_bus_data(server_name)
+            ram = self._srv_config.get(f"{server_name}.ram", default=1024, set_if_not_found=True)
+            mc_version = Version.from_string(self._srv_config.get(f"{server_name}.mc_version"))
+            def __start_mc_server():
+                srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                srv.start()
+            p = mp.Process(
+                target=__start_mc_server,
+                name=f"Server_{server_name}",
+                daemon=True
+            )
+            Logger.info(f"Starting Minecraft server {server_name} of type {server_type} at {server_path} with RAM {ram}MB...")
+            p.start()  # Start the process
+            self.__mc_servers[server_name] = p  # Store the process
+        except Exception as e:
+            Logger.error(f"Failed to init server {server_name}: {e}")
+            Logger.debug(traceback.format_exc())
+
+    def __stop_server(self, server_name: str):
+        srv_process = self.__mc_servers[server_name]
+        if srv_process.is_alive():
+            Logger.info(f"Stopping Minecraft server {server_name} with PID {srv_process.pid}...")
+            self.__bus.trigger(
+                Events['SERVER.STOP'],
+                server_name=server_name,
+                timeout=30  # Wait for 30 seconds for the server to stop
+            )
+            srv_process.join(timeout=30)
+            if srv_process.is_alive():
+                Logger.warning(f"Minecraft server {server_name} did not stop gracefully. Terminating...")
+                srv_process.terminate()
+                srv_process.join()
+            Logger.info(f"Minecraft server {server_name} stopped successfully.")
+
+    def __restart_server(self, server_name: str):
+        """
+        Restarts the specified server.
+        :param server_name: Name of the server to restart
+        """
+        Logger.info(f"Restarting server {server_name}...")
+        self.__stop_server(server_name)
+        self.__start_server(server_name)
 
     def __start_mc_servers(self):
         """
@@ -175,29 +228,7 @@ class Core:
         Logger.info("Initializing Minecraft servers...")
         for server_name, srv_info in self._srv_config.items():
             if srv_info.get("autostart", False):
-                Logger.info(f"Initializing server {server_name}...")
-                try:
-                    server_type = self._srv_config.get(f"{server_name}.type")
-                    server_path = self._srv_config.get(f"{server_name}.path")
-
-                    Server = McServersModules[server_type]
-                    bus_data = self.__bus_dispatcher.get_bus_data(server_name)
-                    ram = self._srv_config.get(f"{server_name}.ram", default=1024, set_if_not_found=True)
-                    mc_version = Version.from_string(self._srv_config.get(f"{server_name}.mc_version"))
-                    def __start_mc_server():
-                        srv = Server(server_name, server_path, ram, mc_version, bus_data)
-                        srv.start()
-                    p = mp.Process(
-                        target=__start_mc_server,
-                        name=f"Server_{server_name}",
-                        daemon=True
-                    )
-                    Logger.info(f"Starting Minecraft server {server_name} of type {server_type} at {server_path} with RAM {ram}MB...")
-                    p.start()  # Start the process
-                    self.__mc_servers[server_name] = p  # Store the process
-                except Exception as e:
-                    Logger.error(f"Failed to init server {server_name}: {e}")
-                    Logger.debug(traceback.format_exc())
+                self.__start_server(server_name)
             else:
                 Logger.info(f"Server {server_name} is not set to autostart. Skipping.")
 
@@ -207,15 +238,8 @@ class Core:
         This method is called when the core is stopped.
         """
         Logger.info("Stopping Minecraft servers...")
-        for srv_name, srv_process in self.__mc_servers.items():
-            if srv_process.is_alive():
-                Logger.info(f"Stopping Minecraft server {srv_name} with PID {srv_process.pid}...")
-                srv_process.join(timeout=30)
-                if srv_process.is_alive():
-                    Logger.warning(f"Minecraft server {srv_name} did not stop gracefully. Terminating...")
-                    srv_process.terminate()
-                    srv_process.join()
-                Logger.info(f"Minecraft server {srv_name} stopped successfully.")
+        for srv_name in self.__mc_servers.keys():
+            self.__stop_server(srv_name)
 
 
 
@@ -317,24 +341,7 @@ class Core:
             Logger.warning(f"Server {server_name} is not running. Cannot restart.")
             return
         Logger.info(f"Restarting server {server_name}...")
-        self.__bus.trigger( # Will wait for the server to stop
-            Events['SERVER.STOP'],
-            server_name=server_name
-        )
-        if self.__get_server_status(server_name):
-            Logger.error(f"Server {server_name} did not stop properly. Cannot restart.")
-            return
-        Logger.info(f"Server {server_name} stopped successfully. Starting it again...")
-        srv_info = self._srv_config[server_name]
-        server_type = srv_info['type']
-        server_path = srv_info['path']
-        if not self.__is_server_path_valid(server_path):
-            Logger.error(f"Server path {server_path} is not valid. Cannot restart server {server_name}.")
-            return
-        if server_type not in McServersModules:
-            Logger.error(f"Server type {server_type} is not recognized. Cannot restart server {server_name}.")
-            return
-        self.__start_server(server_name, server_type, server_path)
+        self.__restart_server(server_name)
 
     def on_server_create(self,
         timestamp : datetime,
@@ -395,6 +402,7 @@ class Core:
             )
         except Exception as e:
             Logger.error(f"Failed to install server {server_name} of type {server_type}: {e}")
+            Logger.debug(traceback.format_exc())
             return
         else:
             self._srv_config.set(server_name, {

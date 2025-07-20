@@ -1,9 +1,9 @@
 <link rel="stylesheet" href="header.css" />
 <header class="dashboard-header">
-    <button id="dashboard" onclick="window.location.href='dashboard.html'" {{"disabled" if page.name == "dashboard" else ""}}>
+    <button id="dashboard" onclick="window.location.href='dashboard'" {{"disabled" if page.name == "dashboard" else ""}}>
         Dashboard
     </button>
-    <button id="account" onclick="window.location.href='account.html'" {{"disabled" if page.name == "account" else ""}}>
+    <button id="account" onclick="window.location.href='account'" {{"disabled" if page.name == "account" else ""}}>
         Account Management
     </button>
     <button id="disconnect">

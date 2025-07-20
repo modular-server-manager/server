@@ -316,3 +316,32 @@ class BaseInterface:
         List all available Minecraft server directories.
         """
         return self.trigger("GET_DIRECTORIES.MINECRAFT") or []
+
+    def start_server(self, server_name: str) -> None:
+        """
+        Start a Minecraft server by its name.
+        """
+        if not server_name:
+            raise ValueError("Missing server name for start_server.")
+
+        self.trigger("SERVER.START", server_name=server_name)
+    
+    def stop_server(self, server_name: str) -> None:
+        """
+        Stop a Minecraft server by its name.
+        """
+        if not server_name:
+            raise ValueError("Missing server name for stop_server.")
+
+        self.trigger("SERVER.STOP", server_name=server_name)
+    
+    def restart_server(self, server_name: str) -> None:
+        """
+        Restart a Minecraft server by its name.
+        """
+        if not server_name:
+            raise ValueError("Missing server name for restart_server.")
+
+        self.trigger("SERVER.RESTART", server_name=server_name)
+
+

@@ -308,4 +308,58 @@ export default class API {
         }
     }
 
+    public static async start_server(server_name: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post(`/api/start_server/${server_name}`, {});
+        if (status === 200) {
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error starting server:', data['message']);
+            throw new Error('Error starting server');
+        }
+        else{
+            return false;
+        }
+    }
+
+    public static async stop_server(server_name: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post(`/api/stop_server/${server_name}`, {});
+        if (status === 200) {
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error stopping server:', data['message']);
+            throw new Error('Error stopping server');
+        }
+        else{
+            return false;
+        }
+    }
+
+    public static async restart_server(server_name: string) {
+        if (!Cookies.has('token')) {
+            console.error('No token found in cookies');
+            return false;
+        }
+        const {data, status} = await API.post(`/api/restart_server/${server_name}`, {});
+        if (status === 200) {
+            return true;
+        }
+        else if (status === 500) {
+            console.error('Error restarting server:', data['message']);
+            throw new Error('Error restarting server');
+        }
+        else{
+            return false;
+        }
+    }
+
 }
