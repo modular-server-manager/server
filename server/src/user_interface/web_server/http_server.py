@@ -180,6 +180,12 @@ class HttpServer(BaseInterface):
 
                 content = pathlib.Path(full_path).read_bytes()
                 mimetype = guess_type(path)[0] or 'text/html'
+                # Only allow known-safe mimetypes
+                allowed_mimetypes = (
+                    'text/html', 'text/css', 'application/javascript', 'application/json', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'
+                )
+                if mimetype not in allowed_mimetypes:
+                    mimetype = 'application/octet-stream'
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
             except Exception as e:
