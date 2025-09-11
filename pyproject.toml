@@ -15,7 +15,7 @@ dependencies = [
     "charset-normalizer==3.4.1",
     "click==8.1.8",
     "Flask==3.1.1",
-    "gamuLogger==3.2.0",
+    "gamuLogger==3.2.2",
     "idna==3.10",
     "itsdangerous==2.2.0",
     "Jinja2==3.1.6",
@@ -29,26 +29,33 @@ dependencies = [
     "eventlet==0.39.1",
     "greenlet==3.2.1",
     "python-socketio==5.13.0",
-    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/cache-1.0.4-py3-none-any.whl",
-    "config @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/config-1.0.4-py3-none-any.whl",
-    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/http_code-1.0.4-py3-none-any.whl",
-    "version @ https://github.com/T0ine34/python-sample/releases/download/1.0.4/version-1.0.4-py3-none-any.whl"
+    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/cache-1.1.4-py3-none-any.whl",
+    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/config-1.1.4-py3-none-any.whl",
+    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/http_code-1.1.4-py3-none-any.whl",
+    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/version-1.1.4-py3-none-any.whl",
+    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/singleton-1.1.4-py3-none-any.whl"
 ]
 
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
-mc-srv-manager-install = "mc_srv_manager.forge.installer:main"
-mc-srv-manager-local-debug = "mc_srv_manager.debug_interface:main"
+mc-srv-manager-event-decoder = "mc_srv_manager.decode_event:main"
 
 [tool.setuptools]
 packages = ["mc_srv_manager",
-            "mc_srv_manager.server",
-            "mc_srv_manager.forge",
-            "mc_srv_manager.utils",
-            "mc_srv_manager.database",
-            "mc_srv_manager.client",
-            "mc_srv_manager.client.assets"]
-package-data = { "mc_srv_manager" = ["client/**", "config.json", "forge/data.xml"] }
+                "mc_srv_manager.bus",
+                "mc_srv_manager.core",
+                "mc_srv_manager.minecraft",
+                    "mc_srv_manager.minecraft.forge",
+                    "mc_srv_manager.minecraft.vanilla",
+                "mc_srv_manager.user_interface",
+                    "mc_srv_manager.user_interface.database",
+                    "mc_srv_manager.user_interface.tk_window",
+                    "mc_srv_manager.user_interface.web_server",
+                "mc_srv_manager.utils",
+                "mc_srv_manager.client",
+                    "mc_srv_manager.client.assets"
+            ]
+package-data = { "mc_srv_manager" = ["client/**", "config.json", "minecraft/properties.xml", "bus/events.xml"] }
 include-package-data = true
 
 [tool.pytest.ini_options]

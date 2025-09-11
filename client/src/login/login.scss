@@ -1,0 +1,61 @@
+@use '../common.scss';
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+// === Auth Container ===
+.auth-container {
+    background: rgba(0, 0, 0, 0.5);
+    border: 3px solid common.$mc-button-border;
+    border-radius: 0;
+    padding: 2.5rem 2rem 2rem 2rem;
+    min-width: 340px;
+    max-width: 90vw;
+    margin: 2rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+}
+
+// === Form ===
+form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    label {
+        color: common.$mc-font-color;
+        font-size: 0.95rem;
+        letter-spacing: 1px;
+        margin-bottom: 0.1rem;
+    }
+
+}
+
+// === Submit Button ===
+#submit-btn {
+    font-size: 1.1rem;
+    padding: 0.7rem 0;
+    margin-top: 0.5rem;
+}
+
+// === Auth Message ===
+.auth-message {
+    margin-top: 1rem;
+    min-height: 1.2em;
+    font-size: 1rem;
+    text-align: center;
+    font-family: common.$mc-font;
+    color: common.$mc-font-color;
+}

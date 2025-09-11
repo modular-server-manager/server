@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {{ insert("metadata") }}
+    <link rel="stylesheet" href="dashboard.css" />
+</head>
+
+<body>
+    {{ insert("header/header") }}
+    <main>
+        <div id="server-list">
+
+        </div>
+        <form id="create-server-form" style="display: none;">
+            <h2>Create Server</h2>
+            <div class="form-group">
+                <label for="server-name">Server Name:</label>
+                <input type="text" id="server-name" required />
+            </div>
+            <div class="form-group">
+                <label for="server-type">Server Type:</label>
+                <select id="server-type">
+                    <option value="vanilla">Vanilla</option>
+                    <option value="forge">Forge</option>
+                    <option disabled value="fabric">Fabric</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="server-path">Server Path:</label>
+                <select id="server-path">
+                    <option value="void" selected></option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="autostart">Autostart:</label>
+                <input type="checkbox" id="autostart" />
+            </div>
+            <div class="form-group">
+                <label for="ram">RAM (MB):</label>
+                <select id="ram" required>
+                    <option value="1024">1024</option>
+                    <option value="2048">2048</option>
+                    <option value="4096">4096</option>
+                    <option value="8192">8192</option>
+                    <option value="16384">16384</option>
+                    <option value="32768">32768</option>
+                    <option value="65536">65536</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mc-version">Minecraft Version:</label>
+                <select type="text" id="mc-version" required>
+                    <option value="void" selected></option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group" id="modloader-version-group" style="display: none;">
+                <label for="modloader-version">Modloader Version:</label>
+                <select type="text" id="modloader-version" required>
+                    <option value="void" selected></option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group form-actions">
+                <button type="button" id="create-server-cancel">Cancel</button>
+                <button type="submit">Create Server</button>
+            </div>
+        </form>
+    </main>
+    <script type="module" src="dashboard.js"></script>
+</body>
+
+</html>

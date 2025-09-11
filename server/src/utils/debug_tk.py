@@ -3,7 +3,7 @@ from typing import Callable, Tuple
 
 from gamuLogger import Logger
 
-Logger.set_module("debug window")
+Logger.set_module("User Interface.Debug Tkinter")
 
 
 class DebugTk(tk.Tk):

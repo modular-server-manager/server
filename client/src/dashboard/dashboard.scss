@@ -1,0 +1,48 @@
+@use '../common.scss';
+
+#server-list {
+    display: flex;
+    flex-direction: column;
+    margin: auto 10px;
+    gap: 16px;
+
+    .server {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+
+        &>* {
+            width: 25%;
+
+            &:first-child {
+                text-align: left;
+            }
+            &:last-child {
+                text-align: right;
+            }
+        }
+    }
+}
+
+#create-server-form {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 50%;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: block;
+    align-items: center;
+    z-index: 1000;
+    margin-left: 20%;
+    margin-top: 10%;
+    padding: 5%;
+
+    & > * {
+        display: block;
+        width: 100%;
+        margin: 20px 0;
+    }
+}

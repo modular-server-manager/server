@@ -1,14 +1,12 @@
-
-
 .PHONY: all build clean client server tests
 
 all: build
 
 TEMP_DIR = build
 
-WEB_SRC_TS = $(wildcard client/src/*.ts)
-WEB_SRC_HTML = $(wildcard client/src/*.template.html)
-WEB_SRC_SASS = $(wildcard client/src/*.scss)
+WEB_SRC_TS = $(wildcard client/src/**/*.ts)
+WEB_SRC_HTML = $(wildcard client/src/**/*.template.html)
+WEB_SRC_SASS = $(wildcard client/src/**/*.scss)
 WEB_ASSETS = $(wildcard client/src/assets/*)
 
 WEB_DIST_JS = $(patsubst client/src/%.ts,mc_srv_manager/client/%.js,$(WEB_SRC_TS))
@@ -24,7 +22,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/forge/data.xml
+SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/properties.xml server/src/bus/events.xml
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)
@@ -34,10 +32,10 @@ TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 
 
 # HTML TEMPLATES DEPENDENCIES
-mc_srv_manager/client/account.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/dashboard.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/server.html: client/src/metadata.template client/src/header.template
-mc_srv_manager/client/login.html: client/src/metadata.template
+mc_srv_manager/client/account/index.html:   client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/dashboard/index.html: client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/server/index.html:    client/src/metadata.template client/src/header/header.template
+mc_srv_manager/client/login/index.html:     client/src/metadata.template client/src/header/header.template
 
 
 
@@ -49,7 +47,7 @@ PYTHON = $(PYTHON_PATH)python
 
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
-EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
+APP_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
 DEBUG_LOCAL_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-local-debug$(EXECUTABLE_EXTENSION)
 
 # if not defined, get the version from git
@@ -62,7 +60,6 @@ VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//; s/-dev+.*//')
 
 WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
 ARCHIVE = mc_srv_manager-$(VERSION_STR).tar.gz
-
 
 $(PYTHON_LIB)/build:
 	$(PYTHON_PATH)pip install build
@@ -77,14 +74,14 @@ mc_srv_manager/client/%.html: client/src/%.template.html
 	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
 mc_srv_manager/client/%.js: client/src/%.ts
-	@mkdir -p $(@D)
+	@mkdir -p $(dir $@)
 	@echo "Compiling $< to $@"
-	@tsc --outDir $(@D) $< --module es6 --target es6 --strict --sourceMap
+	@tsc --outDir mc_srv_manager/client $< --module es6 --target es6 --strict
 
 mc_srv_manager/client/%.css: client/src/%.scss
 	@mkdir -p $(@D)
 	@echo "Compiling $< to $@"
-	@sass $< $@
+	@sass $< $@ --no-source-map
 
 mc_srv_manager/%.py: server/src/%.py
 	@mkdir -p $(@D)
@@ -106,27 +103,29 @@ mc_srv_manager/%: server/src/%
 	@echo "Copying $< to $@"
 	@cp $< $@
 
-dist/mc_srv_manager-0.1.0-py3-none-any.whl: $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
-	$(PYTHON) -m build --outdir dist
+dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
+	mkdir -p $(TEMP_DIR)
+	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION_STR)
+	mkdir -p dist
+	mv $(TEMP_DIR)/*.whl dist/$(WHEEL)
+	rm -rf $(TEMP_DIR)
 	@echo "Building wheel package complete."
 
 dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
 	mkdir -p $(TEMP_DIR)
 	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION_STR)
 	mkdir -p dist
-	mv $(TEMP_DIR)/*.tar.gz dist/
+	mv $(TEMP_DIR)/*.tar.gz dist/$(ARCHIVE)
 	rm -rf $(TEMP_DIR)
 	@echo "Building archive package complete."
 
-
-$(EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
+$(APP_EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
 	@echo "Installing package..."
 	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
 build: dist/$(WHEEL) dist/$(ARCHIVE)
 	@echo "Build complete."
-
 
 client: $(WEB_DIST)
 	@echo "Client build complete."
@@ -136,54 +135,22 @@ server: $(SRV_DIST) $(CONFIG_DIST)
 
 
 
-# test-report.xml: $(EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+# test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
 # 	$(PYTHON) -m pytest --junitxml=test-report.xml tests
 
 
-install: $(EXECUTABLE)
+install: $(APP_EXECUTABLE)
 
-start: $(EXECUTABLE)
+start: install
 	@echo "Starting server..."
-	@$(EXECUTABLE) --module-level http_server:DEBUG --log-file server.log:TRACE -c /var/minecraft/config.json
-
-start/debug: $(EXECUTABLE)
-	@echo "Starting debug tool..."
-	@$(DEBUG_LOCAL_EXECUTABLE) --module-level forge.properties:INFO --log-file server.log:TRACE -c /var/minecraft/config.json
+	@$(APP_EXECUTABLE)  --log-file server.log:TRACE \
+		-c /var/minecraft/config.json \
+		--module-level config:INFO \
+		--module-level minecraft.properties:DEBUG
 
 
 
 # tests: clean-tests test-report.xml
-
-
-
-# client dev
-client/dist/%.js: client/src/%.ts
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@tsc --outDir $(@D) $< --module es6 --target es6 --strict
-
-client/dist/%.css: client/src/%.scss
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@sass $< $@
-
-client/dist/assets/%: client/src/assets/%
-	@mkdir -p $(@D)
-	@echo "Copying $< to $@"
-	@cp $< $@
-
-client/dist/%.html: client/src/%.template.html
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
-
-
-client-dev: $(WEB_DEV_DIST)
-	@echo "Client dev build complete."
-	@npm run start --prefix client
-
-client-dev-clean:
-	rm -rf client/dist
 
 
 clean:

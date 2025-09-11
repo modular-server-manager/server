@@ -5,10 +5,10 @@ from config import JSONConfig
 from gamuLogger import Logger, config_argparse, config_logger
 
 from .database.types import ServerStatus
-from .forge.interface import ForgeServer
+from .minecraft.forge.server import ForgeServer
 from .utils.debug_tk import DebugTk, ask_for_choice
 
-Logger.set_module("forge server.debug interface")
+Logger.set_module("Forge Server.Debug Interface")
 
 BASE_PATH = __file__[:__file__.rfind('/')]  # get the base path of the server
 
@@ -56,7 +56,8 @@ def main():
 
     root.add_button("Stop Server", server.stop)
     root.add_button("Reload World", server.reload_world)
-    root.add_button("Get Player List", lambda: print(server.get_player_list()))
+    root.add_button("Get Player List", lambda: Logger.info(server.get_player_list()))
+    root.add_button("Get Seed", lambda: Logger.info(server.get_seed()))
 
     server.start()
 

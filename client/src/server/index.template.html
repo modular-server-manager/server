@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {{ insert("metadata") }}
+    <link rel="stylesheet" href="server.css" />
+</head>
+
+<body>
+    {{ insert("header/header") }}
+    <main>
+        <h1 id="server-name"></h1>
+        <div class="elements">
+            Minecraft <span id="mc-version"></span> <span id="modloader-version"></span>
+        </div>
+        <div class="elements">
+            Allocated RAM: <span id="ram"></span> MB
+        </div>
+        <div class="elements">
+            Started at: <span id="started-at"></span> (<span id="running-for"></span>)
+        </div>
+        <div class="elements">
+            <button disabled id="start-server">Start Server</button>
+            <button disabled id="stop-server">Stop Server</button>
+            <button disabled id="restart-server">Restart Server</button>
+            <input type="checkbox" id="auto-start" />
+            <label for="auto-start">Auto Start</label>
+        </div>
+    </main>
+    <script type="module" src="server.js"></script>
+</body>
+
+</html>

@@ -7,6 +7,9 @@
 		{
 			"name": "minecraft",
 			"path": "/var/minecraft"
+		},
+		{
+			"path": "../forge-server-manager.wiki"
 		}
 	],
 	"settings": {
@@ -14,8 +17,12 @@
 			"*.vdf": "vdf",
 			"*.svg": "xml",
 			"*.hta": "html",
-			"*.template": "django-html",
-			"python.h": "c"
-		}
+			"*.template": "html",
+			"python.h": "c",
+			"*/config.json": "jsonc"
+		},
+		"python.analysis.inlayHints.callArgumentNames": "partial",
+		"python.analysis.inlayHints.functionReturnTypes": true,
+		"python.analysis.typeCheckingMode": "basic"
 	}
 }
