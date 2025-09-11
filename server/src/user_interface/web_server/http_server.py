@@ -221,13 +221,13 @@ class HttpServer(BaseInterface):
 
         @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def list_forge_versions(mc_version: str) -> FlaskReturnData:
+        def list_forge_versions(mc_version_str: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                if not Version.is_valid_string(mc_version):
-                    Logger.trace(f"Invalid mc_version: {mc_version}")
+                if not Version.is_valid_string(mc_version_str):
+                    Logger.trace(f"Invalid mc_version: {mc_version_str}")
                     return {"message": "Invalid mc_version"}, HTTP.BAD_REQUEST
-                mc_version = Version.from_string(mc_version)
+                mc_version = Version.from_string(mc_version_str)
                 versions = self.list_forge_versions(mc_version)
                 return {"versions": [str(version) for version in versions]}, HTTP.OK
             except Exception as e:
@@ -250,7 +250,7 @@ class HttpServer(BaseInterface):
                 return result
             except ValueError as ve:
                 Logger.debug(f"Error processing API request for path {request.path}: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -268,7 +268,7 @@ class HttpServer(BaseInterface):
                 return info, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Error processing API request for path {request.path}: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -338,7 +338,7 @@ class HttpServer(BaseInterface):
                 )
             except ValueError as ve:
                 Logger.debug(f"Error creating server: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error creating server: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -353,7 +353,7 @@ class HttpServer(BaseInterface):
                 return {"message": "Server started"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Start server error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error starting server: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -368,7 +368,7 @@ class HttpServer(BaseInterface):
                 return {"message": "Server stopped"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Stop server error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error stopping server: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -383,7 +383,7 @@ class HttpServer(BaseInterface):
                 return {"message": "Server restarted"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Restart server error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error restarting server: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -408,7 +408,7 @@ class HttpServer(BaseInterface):
                 return {"token": token.token}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Login error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing login request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -427,7 +427,7 @@ class HttpServer(BaseInterface):
                 return { "token": token.token }, HTTP.CREATED
             except ValueError as ve:
                 Logger.debug(f"Register error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing register request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -442,7 +442,7 @@ class HttpServer(BaseInterface):
                 return {"message": "Logged out"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Logout error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing logout request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -457,7 +457,7 @@ class HttpServer(BaseInterface):
                 return {"message": "User deleted"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Delete user error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing delete user request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -477,7 +477,7 @@ class HttpServer(BaseInterface):
                 }, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Get user info error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -494,7 +494,7 @@ class HttpServer(BaseInterface):
                 return {"message": "User updated"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Update password error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -514,7 +514,7 @@ class HttpServer(BaseInterface):
                 }, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Get user info by username error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -531,7 +531,7 @@ class HttpServer(BaseInterface):
                 return {"message": "User updated"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Update user global access error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
@@ -548,7 +548,7 @@ class HttpServer(BaseInterface):
                 return {"message": "User updated"}, HTTP.OK
             except ValueError as ve:
                 Logger.debug(f"Update user password error: {ve}")
-                return {"message": str(ve)}, HTTP.BAD_REQUEST
+                return {"message": "Bad Request"}, HTTP.BAD_REQUEST
             except Exception as e:
                 Logger.error(f"Error processing user info request: {e}")
                 Logger.debug(f"Error details: {traceback.format_exc()}")
