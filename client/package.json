@@ -7,7 +7,7 @@
   "devDependencies": {
     "@types/node": "^22.15.17",
     "sass": "^1.70.0",
-    "serve": "^14.0.0",
+    "serve": "^14.2.5",
     "typescript": "^5.0.0"
   }
 }
