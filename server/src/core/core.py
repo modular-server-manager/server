@@ -5,6 +5,7 @@ import time
 import traceback
 from datetime import datetime
 from typing import Any, Dict, List
+import shutil
 
 from config import JSONConfig
 from gamuLogger import Logger
@@ -474,7 +475,7 @@ class Core:
         server_path = srv_info['path']
         try:
             if os.path.exists(server_path):
-                os.rmdir(server_path)  # Remove the server directory
+                shutil.rmtree(server_path)  # Remove the server directory
         except Exception as e:
             Logger.error(f"Failed to delete server directory {server_path}: {e}")
             return
