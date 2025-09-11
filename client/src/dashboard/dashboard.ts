@@ -141,7 +141,8 @@ async function on_create_server_button() {
                 autostart: autostart,
                 ram: parseInt(ram, 10), // Convert to integer
                 mc_version: mc_version,
-                modloader_version: modloader_version
+                modloader_version: modloader_version,
+                started_at: null,
             };
             const success = await API.create_server(server_info);
             if (success) {

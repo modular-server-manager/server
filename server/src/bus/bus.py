@@ -75,7 +75,7 @@ class Bus:
                 )
             if arg_type.__name__ != event[arg_name].type:
                 raise ValueError(
-                    f"Callback for event {event.name} has argument {arg_name} with wrong type (expected {event.args[arg_name].type}, got {arg_type.__name__})"
+                    f"Callback for event {event.name} has argument {arg_name} with wrong type (expected {event[arg_name].type}, got {arg_type.__name__})"
                 )
 
     def __register(self, event: Event, callback: Callback):
@@ -117,10 +117,10 @@ class Bus:
         prefix = BusMessagePrefix.from_string(prefix_str)
         return prefix, data
 
-    def __write(self, raw_msg: str, __to : int, fragment_number: int, fragment_count: int, msg_id : int):
+    def __write(self, raw_msg: str, _to : int, fragment_number: int, fragment_count: int, msg_id : int):
         # add the id at the beginning, followed by a 0 for the target
         prefix = BusMessagePrefix(source_id=self.__id,
-                                  target_id=__to,
+                                  target_id=_to,
                                   message_id=msg_id,
                                   fragment_number=fragment_number,
                                   fragment_count=fragment_count)
@@ -138,7 +138,7 @@ class Bus:
             else:
                 raise ValueError("No free position in shared list to send data.")
 
-    def __send(self, event: Event, __to : int, timeout : int = 5, **kwargs: Any) -> Any:
+    def __send(self, event: Event, _to : int, timeout : float = 5, **kwargs: Any) -> Any:
         if "timestamp" not in kwargs:
             for a in event.args:
                 if a.name == "timestamp" and a.type == "datetime":
@@ -160,7 +160,7 @@ class Bus:
         message_id = random.randint(0, 255)  # Generate a random message ID for the event
 
         for i, part in enumerate(parts):
-            self.__write(part, __to, i, len(parts), message_id)
+            self.__write(part, _to, i, len(parts), message_id)
 
         if event.return_type != "None":
             res = self.wait_for(event.return_event(), timeout=timeout)  # Wait for the event to be processed and return the result
@@ -173,7 +173,7 @@ class Bus:
             Logger.debug(f"Event {event.name} triggered without return type, no waiting for result.")
             return None
 
-    def trigger(self, event: Event, timeout : int = 5, **kwargs: Any) -> Any:
+    def trigger(self, event: Event, timeout : float = 5, **kwargs: Any) -> Any:
         """
         Trigger an event with the given name and arguments.
         If the event requires a timestamp and it is not provided, it will be added automatically.
@@ -295,36 +295,3 @@ class Bus:
             self.__thread.join()
         else:
             Logger.warning("Bus is not listening")
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    from datetime import datetime
-    bus1 = Bus()
-
-    def _get_players_1(timestamp: datetime, server_name: str) -> list[str]:
-        if server_name == "TestServer":
-            return ["Player1", "Player2", "Player3"]
-        return None
-
-    def _get_players_2(timestamp: datetime, server_name: str) -> list[str]:
-        if server_name == "TestServer2":
-            return ["Player4", "Player5", "Player6"]
-        return None
-
-
-    bus1.register(Events["PLAYERS.LIST"], _get_players_1)
-    bus1.register(Events["PLAYERS.LIST"], _get_players_2)
-
-
-    bus2 = Bus()
-    print(bus2.trigger(Events["PLAYERS.LIST"], timestamp=datetime.now(), server_name="TestServer2"))

@@ -237,7 +237,7 @@ class EventsType:
             raise ValueError(f"Failed to parse XML file {xml_path}: {e}") from None
         root = tree.getroot()
         for namespace in root.findall('namespace'):
-            self.__parse_namespace(namespace, namespace.get('name'))
+            self.__parse_namespace(namespace, namespace.get('name') or "global")
         Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
@@ -249,18 +249,18 @@ class EventsType:
             )
         for event in namespace.findall('event'):
             event_name = f"{namespace_name}.{event.get('name')}"
-            event_id = int(event.get('id'), 16)
+            event_id = int(event.get('id'), 16) #type: ignore
             if not event_id:
                 raise ValueError(f"Event {event_name} does not have an ID")
             args = [
-                EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16))
-                for arg in event.find('args').findall('arg')
+                EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16)) #type: ignore
+                for arg in event.find('args').findall('arg') #type: ignore
             ]
-            return_type = event.find('return').get('type')
+            return_type = event.find('return').get('type') #type: ignore
             Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
-            self.events[event_id] = Event(event_name, event_id, args, return_type)
+            self.events[event_id] = Event(event_name, event_id, args, return_type) #type: ignore
 
     def __getitem__(self, item: str|int) -> Event:
         if isinstance(item, str):

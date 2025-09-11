@@ -20,6 +20,9 @@
 			"*.template": "html",
 			"python.h": "c",
 			"*/config.json": "jsonc"
-		}
+		},
+		"python.analysis.inlayHints.callArgumentNames": "partial",
+		"python.analysis.inlayHints.functionReturnTypes": true,
+		"python.analysis.typeCheckingMode": "basic"
 	}
 }

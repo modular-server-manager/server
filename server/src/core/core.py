@@ -25,10 +25,18 @@ class Core:
         self.__running = False
 
         # Initialize the bus dispatcher (will run in a separate thread)
-        self.__bus_dispatcher = BusDispatcher(
-            self.__config.get("bus.memory_size", default=8, set_if_not_found=True),
-            self.__config.get("bus.max_string_length", default=8192, set_if_not_found=True) # default of 8KB
-        )
+        
+        mem_size = self.__config.get("bus.memory_size", default=8, set_if_not_found=True)
+        max_str_len = self.__config.get("bus.max_string_length", default=8192, set_if_not_found=True) # default of 8KB  
+        
+        if not isinstance(mem_size, int) or mem_size <= 0:
+            Logger.error(f"Invalid bus memory size: {mem_size}. Must be a positive integer. Using default of 8MB.")
+            raise ValueError("Invalid bus memory size in configuration.")
+        if not isinstance(max_str_len, int) or max_str_len <= 0:
+            Logger.error(f"Invalid bus max string length: {max_str_len}. Must be a positive integer. Using default of 8192 bytes.")
+            raise ValueError("Invalid bus max string length in configuration.")
+        
+        self.__bus_dispatcher = BusDispatcher( mem_size, max_str_len)
         self.__bus_dispatcher_thread = th.Thread(
             target=self.__bus_dispatcher.mainloop,
             daemon=True,
@@ -38,7 +46,7 @@ class Core:
         # Initialize the bus to communicate with modules through the dispatcher
         bus_data = self.__bus_dispatcher.get_bus_data("core")
         self.__bus = Bus(bus_data)
-        self._srv_config = JSONConfig(self.__config.get("server_config_path"))
+        self._srv_config = JSONConfig(str(self.__config.get("server_config_path")))
 
         self.__ui_processes: Dict[str, mp.Process] = {}
         self.__mc_servers  : Dict[str, mp.Process] = {}
@@ -98,7 +106,7 @@ class Core:
         Initializes and start user interface modules based on the configuration.
         This method is called when the core is started.
         """
-        to_load : dict[str, dict[str, Any]] = self.__config.get("user_interface_modules")
+        to_load : dict[str, dict[str, Any]] = self.__config.get("user_interface_modules") #type: ignore
         for module_type, config in to_load.items():
             Logger.info(f"Initializing user interface module {config['name']} of type {module_type}...")
             if module_type not in UserInterfaceModules:
@@ -175,11 +183,26 @@ class Core:
         try:
             server_type = self._srv_config.get(f"{server_name}.type")
             server_path = self._srv_config.get(f"{server_name}.path")
+            
+            if not isinstance(server_type, str) or server_type not in McServersModules:
+                Logger.error(f"Invalid or unknown server type for server {server_name}. Cannot start server.")
+                return
+            if not isinstance(server_path, str) or not os.path.exists(server_path):
+                Logger.error(f"Invalid or non-existent server path for server {server_name}. Cannot start server.")
+                return
 
             Server = McServersModules[server_type]
             bus_data = self.__bus_dispatcher.get_bus_data(server_name)
             ram = self._srv_config.get(f"{server_name}.ram", default=1024, set_if_not_found=True)
-            mc_version = Version.from_string(self._srv_config.get(f"{server_name}.mc_version"))
+            if not isinstance(ram, int) or ram <= 0:
+                Logger.error(f"Invalid RAM value for server {server_name}. Cannot start server.")
+                return
+            mc_version_raw = self._srv_config.get(f"{server_name}.mc_version")
+            if not isinstance(mc_version_raw, str):
+                Logger.error(f"Invalid Minecraft version for server {server_name}. Cannot start server.")
+                return
+            mc_version = Version.from_string(mc_version_raw)
+            
             def __start_mc_server():
                 srv = Server(server_name, server_path, ram, mc_version, bus_data)
                 srv.start()
@@ -290,7 +313,7 @@ class Core:
         """
         if server_name not in self._srv_config:
             Logger.error(f"Server {server_name} not found.")
-            return False
+            return ServerStatus.STOPPED
 
         pinged : str = self.__bus.trigger(
             Events['SERVER.PING'],
@@ -303,8 +326,11 @@ class Core:
         try:
             data = []
             Logger.trace("Fetching Minecraft server directories from configuration.")
-            for i in range(len(self.__config.get("minecraft_servers_dirs", []))):
+            for i in range(len(self.__config.get("minecraft_servers_dirs", []))): # type: ignore
                 dir_path = self.__config.get(f"minecraft_servers_dirs.{i}")
+                if not isinstance(dir_path, str):
+                    Logger.warning(f"Invalid directory path at index {i}: {dir_path}. Skipping.")
+                    continue
                 data.append(os.path.normpath(dir_path))
             Logger.trace(f"Found Minecraft server directories: {data}")
             return data
