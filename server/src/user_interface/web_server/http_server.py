@@ -304,7 +304,7 @@ class HttpServer(BaseInterface):
                     Logger.debug("Invalid server name")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
                 server_name = html.escape(server_name.strip())
-                if not server_type or not isinstance(server_type, str) and server_type not in McServersModules:
+                if not server_type or not isinstance(server_type, str) or server_type not in McServersModules:
                     Logger.debug("Invalid server type")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
 
