@@ -135,8 +135,8 @@ server: $(SRV_DIST) $(CONFIG_DIST)
 
 
 
-# test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
-# 	$(PYTHON) -m pytest --junitxml=test-report.xml tests
+test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+	$(PYTHON) -m pytest --junitxml=test-report.xml tests
 
 
 install: $(APP_EXECUTABLE)
@@ -150,7 +150,7 @@ start: install
 
 
 
-# tests: clean-tests test-report.xml
+tests: clean-tests test-report.xml
 
 
 clean:
