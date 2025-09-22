@@ -39,6 +39,7 @@ dependencies = [
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
 mc-srv-manager-event-decoder = "mc_srv_manager.decode_event:main"
+mc-srv-manager-doc-gen = "mc_srv_manager.utils.gen_doc:main"
 
 [tool.setuptools]
 packages = ["mc_srv_manager",

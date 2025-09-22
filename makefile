@@ -71,7 +71,7 @@ print-%:
 mc_srv_manager/client/%.html: client/src/%.template.html
 	@mkdir -p $(@D)
 	@echo "Compiling $< to $@"
-	@python html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
+	@$(PYTHON) html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
 mc_srv_manager/client/%.js: client/src/%.ts
 	@mkdir -p $(dir $@)
@@ -144,8 +144,9 @@ install: $(APP_EXECUTABLE)
 start: install
 	@echo "Starting server..."
 	@$(APP_EXECUTABLE)  --log-file server.log:TRACE \
+		--log-file server.debug.log:DEBUG \
 		-c /var/minecraft/config.json \
-		--module-level config:INFO \
+		--module-level config:DEBUG \
 		--module-level minecraft.properties:DEBUG
 
 
@@ -156,6 +157,9 @@ tests: clean-tests test-report.xml
 clean:
 	rm -rf mc_srv_manager
 	rm -rf dist
+	rm -rf $(PYTHON_LIB)/mc_srv_manager
+	rm -rf $(PYTHON_LIB)/mc_srv_manager-*.dist-info
+	rm -rf $(APP_EXECUTABLE)
 
 clean-tests:
 	rm -rf test-report.xml

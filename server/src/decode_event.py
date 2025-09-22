@@ -90,6 +90,7 @@ def main() -> None:
     parser = ArgumentParser(description="Decode a hexadecimal event string.")
     parser.add_argument("hexa_string", type=str, help="The hexadecimal string to decode.")
     parser.add_argument("--prefix", "-p", action="store_true", help="enable if the string contains a prefix")
+    parser.add_argument("--raw", "-r", action="store_true", help="print raw decoded string")
     args = parser.parse_args()
 
     try:
@@ -100,8 +101,11 @@ def main() -> None:
             prefix_str, decoded_string = decoded_string.split(FILE_SEPARATOR, 1)
             prefix = BusMessagePrefix.from_string(prefix_str)
             print_prefix(prefix)
-        event, event_args = decode_event(decoded_string)
-        print_event(event, event_args)
+        if args.raw:
+            print(f"Decoded string: {decoded_string}")
+        else:
+            event, event_args = decode_event(decoded_string)
+            print_event(event, event_args)
     except Exception as e:
         print(f"Error decoding event: {e}")
 

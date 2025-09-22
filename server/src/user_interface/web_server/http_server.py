@@ -7,7 +7,7 @@ import pathlib
 import traceback
 from datetime import datetime, timedelta
 from mimetypes import guess_type
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Union
 
 import argon2.exceptions
 from flask import Flask, request
@@ -29,7 +29,8 @@ STATIC_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 
 T = TypeVar('T')
 
-type JsonAble = dict[str, JsonAble] | list[JsonAble] | str | int | float | bool | None
+# type JsonAble = dict[str, JsonAble] | list[JsonAble] | str | int | float | bool | None
+JsonAble = Union[dict[str, Any], list[Any], str, int, float, bool, None]
 
 FlaskReturnData = (
     tuple[JsonAble, int, dict[str, str]] |      # data, status code, headers
@@ -121,7 +122,7 @@ class HttpServer(BaseInterface):
             wrapper.__name__ = f.__name__
             return wrapper
 
-        return decorator
+        return decorator # type: ignore
 
     def __config_static_route(self):
         self.__app.static_folder = STATIC_PATH
@@ -182,9 +183,10 @@ class HttpServer(BaseInterface):
                 mimetype = guess_type(path)[0] or 'text/html'
                 # Only allow known-safe mimetypes
                 allowed_mimetypes = (
-                    'text/html', 'text/css', 'application/javascript', 'application/json', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'
+                    'text/html', 'text/css', 'text/javascript', 'text/json', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'
                 )
                 if mimetype not in allowed_mimetypes:
+                    Logger.warning(f"Unknown mimetype {mimetype} for file {path}, defaulting to application/octet-stream")
                     mimetype = 'application/octet-stream'
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
@@ -227,14 +229,14 @@ class HttpServer(BaseInterface):
 
         @self.__app.route('/api/forge_versions/<path:mc_version>', methods=['GET']) #pyright: ignore[reportArgumentType, reportUntypedFunctionDecorator]
         @self.request_auth(AccessLevel.USER)
-        def list_forge_versions(mc_version_str: str) -> FlaskReturnData:
+        def list_forge_versions(mc_version: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
-                if not Version.is_valid_string(mc_version_str):
-                    Logger.trace(f"Invalid mc_version: {mc_version_str}")
+                if not Version.is_valid_string(mc_version):
+                    Logger.trace(f"Invalid mc_version: {mc_version}")
                     return {"message": "Invalid mc_version"}, HTTP.BAD_REQUEST
-                mc_version = Version.from_string(mc_version_str)
-                versions = self.list_forge_versions(mc_version)
+                mc_version_v = Version.from_string(mc_version)
+                versions = self.list_forge_versions(mc_version_v)
                 return {"versions": [str(version) for version in versions]}, HTTP.OK
             except Exception as e:
                 Logger.error(f"Error processing API request for path {request.path}: {e}")
@@ -301,7 +303,9 @@ class HttpServer(BaseInterface):
                 server_name = data.get("name")
                 server_type = data.get("type")
                 server_path = data.get("path")
-                autostart = str2bool(data.get("autostart", "false"))
+                
+                autostart = data.get("autostart", False)
+                
                 mc_version = data.get("mc_version")
                 modloader_version = data.get("modloader_version")
                 ram = data.get("ram")
@@ -325,7 +329,10 @@ class HttpServer(BaseInterface):
                 if server_type != "vanilla" and not modloader_version or not isinstance(modloader_version, str):
                     Logger.debug("Invalid modloader_version")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
-                modloader_version = Version.from_string(modloader_version) if modloader_version else None
+                if not modloader_version:
+                    Logger.debug("Modloader version is required for non-vanilla servers")
+                    return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
+                modloader_version = Version.from_string(modloader_version)
                 if not isinstance(autostart, bool):
                     Logger.debug("Invalid autostart value")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
@@ -402,7 +409,7 @@ class HttpServer(BaseInterface):
 ###################################################################################################
     def __config_api_route_user(self):
 
-        @self.__app.route('/api/login', methods=['POST'])
+        @self.__app.route('/api/login', methods=['POST']) #pyright: ignore[reportArgumentType]
         def login() -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
             try:
@@ -420,7 +427,7 @@ class HttpServer(BaseInterface):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/register', methods=['POST'])
+        @self.__app.route('/api/register', methods=['POST']) #pyright: ignore[reportArgumentType]
         def register() -> FlaskReturnData:
             Logger.debug(f"API request for path: {request.path}")
             Logger.trace(request.get_json())
@@ -439,7 +446,7 @@ class HttpServer(BaseInterface):
                 Logger.debug(f"Error details: {traceback.format_exc()}")
                 return {"message": "Internal Server Error"}, HTTP.INTERNAL_SERVER_ERROR
 
-        @self.__app.route('/api/logout', methods=['POST'])
+        @self.__app.route('/api/logout', methods=['POST']) #pyright: ignore[reportArgumentType]
         @self.request_auth(AccessLevel.USER)
         def logout(token: str) -> FlaskReturnData:
             Logger.trace(f"API request for path: {request.path}")
