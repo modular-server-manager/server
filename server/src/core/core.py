@@ -47,6 +47,8 @@ class Core:
         # Initialize the bus to communicate with modules through the dispatcher
         bus_data = self.__bus_dispatcher.get_bus_data("core")
         self.__bus = Bus(bus_data)
+        if self.__config.get("server_config_path", "", True) == "":
+            raise ValueError("Server configuration path (server_config_path) is not set in the configuration file.")
         self._srv_config = JSONConfig(str(self.__config.get("server_config_path")))
 
         self.__ui_processes: Dict[str, mp.Process] = {}
@@ -107,6 +109,9 @@ class Core:
         Initializes and start user interface modules based on the configuration.
         This method is called when the core is started.
         """
+        if self.__config.get("user_interface_modules", {}, True) == {}:
+            Logger.warning("No user interface modules configured.")
+            return
         to_load : dict[str, dict[str, Any]] = self.__config.get("user_interface_modules") #type: ignore
         for module_type, config in to_load.items():
             Logger.info(f"Initializing user interface module {config['name']} of type {module_type}...")
