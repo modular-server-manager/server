@@ -58,7 +58,8 @@
 			"ms-vscode.vscode-typescript-next",
 			"ms-python.python",
 			"hediet.vscode-drawio",
-			"redhat.vscode-xml"
+			"redhat.vscode-xml",
+			"spencerwmiles.vscode-task-buttons"
 		]
 	},
 	"tasks": {
