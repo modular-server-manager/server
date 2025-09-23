@@ -23,7 +23,34 @@
 		},
 		"python.analysis.inlayHints.callArgumentNames": "partial",
 		"python.analysis.inlayHints.functionReturnTypes": true,
-		"python.analysis.typeCheckingMode": "basic"
+		"python.analysis.typeCheckingMode": "basic",
+		"makefile.configureOnOpen": false,
+		"VsCodeTaskButtons.showCounter": false,
+		"VsCodeTaskButtons.tasks": [
+			{
+				"label": "$(debug-start) Run Server",
+				"alignment": "right",
+				"task": "Run Server",
+				"tooltip": "Start the server, build it if necessary\n(equivalent to 'make start')",
+			},
+			{
+				"label": "$(tools) Server related tools",
+				"alignment": "right",
+				"tasks": [
+					{
+						"label": "Decode Event",
+						"task": "Decode Event",
+						"tooltip": "Decode a raw event string"
+					},
+					{
+						"label": "Generate doc",
+						"task": "Generate doc",
+						"tooltip": "Regenerate the documentation files"
+					}
+				],
+				"tooltip": "Start the server, build it if necessary\n(equivalent to 'make start')",
+			}
+		]	
 	},
 	"extensions": {
 		"recommendations": [
@@ -43,15 +70,49 @@
 				"command": "make",
 				"args": ["start"],
 				"group": {"kind": "build", "isDefault": true},
-				"problemMatcher": []
+				"problemMatcher": [],
+				"presentation": {
+					"echo": false,
+					"reveal": "always",
+					"focus": false,
+					"panel": "dedicated",
+					"showReuseMessage": false,
+					"clear": true,
+					"close": true
+				}
 			},
 			{
 				"label": "Generate doc",
 				"type": "shell",
-				"args": ["gen_doc"],
-				"command": "make",
+				"command": "env/bin/mc-srv-manager-doc-gen",
 				"group": {"kind": "build", "isDefault": false},
-				"problemMatcher": []
+				"problemMatcher": [],
+				"presentation": {
+					"echo": false,
+					"reveal": "silent",
+					"focus": false,
+					"panel": "shared",
+					"showReuseMessage": false,
+					"clear": false
+				}
+			},
+			
+			{
+				"label": "Decode Event",
+				"type": "shell",
+				"command": "env/bin/mc-srv-manager-event-decoder",
+				"args": ["${input:event}", "${input:raw_mode}", "${input:has_prefix}"],
+				"group": {"kind": "none", "isDefault": false},
+				"problemMatcher": [],
+				"presentation": {
+					"echo": false,
+					"reveal": "always",
+					"focus": false,
+					"panel": "shared",
+					"showReuseMessage": false,
+					"clear": false
+				},
+				
 			}
 		],
 		"inputs": [
@@ -59,6 +120,20 @@
 				"id": "event",
 				"type": "promptString",
 				"description": "Enter the event string to decode"
+			},
+			{
+				"id" : "raw_mode",
+				"type": "pickString",
+				"description": "Enable raw mode",
+				"options": ["--raw", ""],
+				"default": ""
+			},
+			{
+				"id": "has_prefix",
+				"type": "pickString",
+				"description": "Does the event have a prefix",
+				"options": ["--prefix", ""],
+				"default": ""
 			}
 		]
 	}

@@ -48,9 +48,6 @@ PYTHON = $(PYTHON_PATH)python
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
 APP_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
-EVENT_DECODER_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-event-decoder$(EXECUTABLE_EXTENSION)
-DOC_GEN_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-doc-gen$(EXECUTABLE_EXTENSION)
-
 
 # if not defined, get the version from git
 VERSION ?= $(shell $(PYTHON) get_version.py)
@@ -126,17 +123,11 @@ $(APP_EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(W
 	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
-$(EVENT_DECODER_EXECUTABLE) : $(APP_EXECUTABLE)
-$(DOC_GEN_EXECUTABLE) : $(APP_EXECUTABLE)
-
 build: dist/$(WHEEL) dist/$(ARCHIVE)
-	@echo "Build complete."
 
 client: $(WEB_DIST)
-	@echo "Client build complete."
 
 server: $(SRV_DIST) $(CONFIG_DIST)
-	@echo "Server build complete."
 
 
 
@@ -147,20 +138,11 @@ test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG
 install: $(APP_EXECUTABLE)
 
 start: install
-	@echo "Starting server..."
 	@$(APP_EXECUTABLE)  --log-file server.log:TRACE \
 		--log-file server.debug.log:DEBUG \
 		-c /var/minecraft/config.json \
 		--module-level config:DEBUG \
 		--module-level minecraft.properties:DEBUG
-
-decode_event: $(EVENT_DECODER_EXECUTABLE)
-	@echo "Decoding event..."
-	@$(EVENT_DECODER_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS))
-
-gen_doc: $(DOC_GEN_EXECUTABLE)
-	@echo "Generating documentation..."
-	@$(DOC_GEN_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS))
 
 tests: clean-tests test-report.xml
 
