@@ -54,8 +54,8 @@ DEBUG_LOCAL_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-local-debug$(EXECUTABLE_EX
 VERSION ?= $(shell $(PYTHON) get_version.py)
 
 # if version is in the form of x.y.z-dev-aaaa or x.y.z-dev+aaaa, set it to x.y.z-dev
-# VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//')
-VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*//; s/-dev+.*//')
+# VERSION_STR = $(shell echo $(VERSION) | sed 's/-dev-[a-z0-9]*\/\/')
+VERSION_STR = $(shell echo $(VERSION) | sed "s/-dev-[a-z0-9]*//; s/-dev+.*//")
 
 
 WHEEL = mc_srv_manager-$(VERSION_STR)-py3-none-any.whl
