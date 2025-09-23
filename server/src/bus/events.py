@@ -354,12 +354,11 @@ class EventArg:
             raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
 
 class Event:
-    def __init__(self, name: str, id: int, args: List[EventArg], return_type: str, description: str = ""):
+    def __init__(self, name: str, id: int, args: List[EventArg], return_type: str):
         self.name = name
         self.id = id
         self.args = args
         self.return_type = return_type
-        self.description = description
 
     def return_event(self):
         """
@@ -451,12 +450,12 @@ class EventsType:
                 EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16)) #type: ignore
                 for arg in event.find('args').findall('arg') #type: ignore
             ]
-            description = event.find('description').text if event.find('description') is not None else ""
+
             return_type = event.find('return').get('type') #type: ignore
             Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
-            self.events[event_id] = Event(event_name, event_id, args, return_type, description) #type: ignore
+            self.events[event_id] = Event(event_name, event_id, args, return_type) #type: ignore
 
     def __getitem__(self, item: str|int) -> Event:
         if isinstance(item, str):

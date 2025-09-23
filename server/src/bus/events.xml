@@ -7,7 +7,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired when a server is starting.</description>
             <return type="None" />
         </event>
         <event name="STARTED" id="0x0002">
@@ -15,7 +14,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired after a server has started.</description>
             <return type="None" />
         </event>
         <event name="STOPPING" id="0x0003">
@@ -23,7 +21,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired when a server is stopping.</description>
             <return type="None" />
         </event>
         <event name="STOPPED" id="0x0004">
@@ -31,7 +28,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired after a server has stopped.</description>
             <return type="None" />
         </event>
         <event name="CRASHED" id="0x0005">
@@ -39,7 +35,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired when a server has crashed.</description>
             <return type="None" />
         </event>
 
@@ -48,7 +43,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request to start a server.</description>
             <return type="None" />
         </event>
         <event name="STOP" id="0x0007">
@@ -56,7 +50,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request to stop a server.  The emmitter will wait for the server to stop before returning.</description>
             <return type="bool" />
         </event>
         <event name="RESTART" id="0x0008">
@@ -64,7 +57,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request to restart a server.</description>
             <return type="None" />
         </event>
 
@@ -76,10 +68,9 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
-            <description>Request to create a new server.</description>
             <return type="None" />
         </event>
         <event name="DELETE" id="0x000A">
@@ -87,7 +78,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request to delete a server.</description>
             <return type="None" />
         </event>
         <event name="RENAME" id="0x000B">
@@ -96,7 +86,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="new_name" type="str" id="0x03" />
             </args>
-            <description>Request to rename a server.</description>
             <return type="None" />
         </event>
 
@@ -108,10 +97,9 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
-            <description>Fired after a server has been created.</description>
             <return type="None" />
         </event>
         <event name="DELETED" id="0x000D">
@@ -119,7 +107,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Fired after a server has been deleted.</description>
             <return type="None" />
         </event>
         <event name="RENAMED" id="0x000E">
@@ -128,30 +115,26 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="new_name" type="str" id="0x03" />
             </args>
-            <description>Fired after a server has been renamed.</description>
             <return type="None" />
         </event>
         <event name="LIST" id="0x000F">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
             </args>
-            <description>Request a list of all servers. </description>
             <return type="List[Dict[str, Any]]" />
         </event>
-        <event name="PING" id="0x0010"> <!-- This event is used to check if the server is online -->
+        <event name="PING" id="0x0010">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request to ping a server. </description>
-            <return type="str" description="Returns the server's status as a string: &quot;online&quot;, &quot;offline&quot;, or &quot;starting&quot;."/>
+            <return type="str"/>
         </event>
         <event name="SEED" id="0x0011">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request the world seed of a server. Returns the seed as a string.</description>
             <return type="str" />
         </event>
         <event name="INFO" id="0x0012">
@@ -159,7 +142,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request detailed information about a server. Returns a dictionary containing server information.</description>
             <return type="Dict[str, Any]" />
         </event>
         <event name="CREATING" id="0x0013">
@@ -170,18 +152,16 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
-            <description>Fired when a server is being created.</description>
             <return type="None" />
         </event>
-        <event name="STARTED_AT" id="0x0105">
+        <event name="STARTED_AT" id="0x0014">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request the time a server was started. Returns a datetime object representing the start time.</description>
             <return type="datetime" />
         </event>
     </namespace>
@@ -193,7 +173,6 @@
                 <arg name="from" type="str" id="0x03" />
                 <arg name="message" type="str" id="0x04" />
             </args>
-            <description>Fired when a console message is received from a server.</description>
             <return type="None" />
         </event>
         <event name="LOG_RECEIVED" id="0x0102">
@@ -202,7 +181,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="content" type="str" id="0x03" />
             </args>
-            <description>Fired when a log message is received from a server.</description>
             <return type="None" />
         </event>
         <event name="SEND_MESSAGE" id="0x0103">
@@ -212,7 +190,6 @@
                 <arg name="_from" type="str" id="0x03" />
                 <arg name="message" type="str" id="0x04" />
             </args>
-            <description>Request to send a message to a server's console.</description>
             <return type="None" />
         </event>
         <event name="SEND_COMMAND" id="0x0104">
@@ -221,7 +198,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="command" type="str" id="0x03" />
             </args>
-            <description>Request to send a command to a server's console.</description>
             <return type="None" />
         </event>
     </namespace>
@@ -232,7 +208,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="player_name" type="str" id="0x03" />
             </args>
-            <description>Fired when a player joins a server.</description>
             <return type="None" />
         </event>
         <event name="LEFT" id="0x0202">
@@ -241,7 +216,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="player_name" type="str" id="0x03" />
             </args>
-            <description>Fired when a player leaves a server.</description>
             <return type="None" />
         </event>
         <event name="KICKED" id="0x0203">
@@ -250,7 +224,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="player_name" type="str" id="0x03" />
             </args>
-            <description>Fired when a player is kicked from a server.</description>
             <return type="None" />
         </event>
         <event name="BANNED" id="0x0204">
@@ -260,7 +233,6 @@
                 <arg name="player_name" type="str" id="0x03" />
             </args>
             <return type="None" />
-            <description>Fired when a player is banned from a server.</description>
         </event>
         <event name="PARDONED" id="0x0205">
             <args>
@@ -278,7 +250,6 @@
                 <arg name="player_name" type="str" id="0x03" />
                 <arg name="reason" type="str" id="0x04" />
             </args>
-            <description>Request to kick a player from a server.</description>
             <return type="None" />
         </event>
         <event name="BAN" id="0x0207">
@@ -288,7 +259,6 @@
                 <arg name="player_name" type="str" id="0x03" />
                 <arg name="reason" type="str" id="0x04" />
             </args>
-            <description>Request to ban a player from a server.</description>
             <return type="None" />
         </event>
         <event name="PARDON" id="0x0208">
@@ -297,7 +267,6 @@
                 <arg name="server_name" type="str" id="0x02" />
                 <arg name="player_name" type="str" id="0x03" />
             </args>
-            <description>Request to pardon (unban) a player from a server.</description>
             <return type="None" />
         </event>
         <event name="LIST" id="0x0209">
@@ -305,7 +274,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <description>Request a list of all players currently online on a server.</description>
             <return type="list[str]" />
         </event>
     </namespace>
@@ -314,7 +282,6 @@
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
             </args>
-            <description>Request a list of all available Minecraft versions.</description>
             <return type="list[Version]" />
         </event>
         <event name="FORGE" id="0x0302">
@@ -322,7 +289,6 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="mc_version" type="Version" id="0x02" />
             </args>
-            <description>Request a list of all available Forge versions for a specific Minecraft version.</description>
             <return type="Dict[Version, Dict[str, Any]]" />
         </event>
     </namespace>
@@ -331,7 +297,6 @@
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
             </args>
-            <description>Request a list of all available Minecraft directories.</description>
             <return type="list[str]" />
         </event>
     </namespace>

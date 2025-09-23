@@ -22,7 +22,7 @@ WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSET
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
-SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/properties.xml server/src/bus/events.xml
+SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/properties.xml server/src/bus/events.xml server/src/events_descriptions.json
 SRV_DIST = $(patsubst server/src/%,mc_srv_manager/%,$(SRV_SRC))
 
 CONFIG_SRC = $(wildcard server/src/config.json)
@@ -48,7 +48,9 @@ PYTHON = $(PYTHON_PATH)python
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
 
 APP_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager$(EXECUTABLE_EXTENSION)
-DEBUG_LOCAL_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-local-debug$(EXECUTABLE_EXTENSION)
+EVENT_DECODER_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-event-decoder$(EXECUTABLE_EXTENSION)
+DOC_GEN_EXECUTABLE = $(PYTHON_PATH)mc-srv-manager-doc-gen$(EXECUTABLE_EXTENSION)
+
 
 # if not defined, get the version from git
 VERSION ?= $(shell $(PYTHON) get_version.py)
@@ -124,6 +126,9 @@ $(APP_EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(W
 	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
+$(EVENT_DECODER_EXECUTABLE) : $(APP_EXECUTABLE)
+$(DOC_GEN_EXECUTABLE) : $(APP_EXECUTABLE)
+
 build: dist/$(WHEEL) dist/$(ARCHIVE)
 	@echo "Build complete."
 
@@ -149,7 +154,13 @@ start: install
 		--module-level config:DEBUG \
 		--module-level minecraft.properties:DEBUG
 
+decode_event: $(EVENT_DECODER_EXECUTABLE)
+	@echo "Decoding event..."
+	@$(EVENT_DECODER_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS))
 
+gen_doc: $(DOC_GEN_EXECUTABLE)
+	@echo "Generating documentation..."
+	@$(DOC_GEN_EXECUTABLE) $(filter-out $@,$(MAKECMDGOALS))
 
 tests: clean-tests test-report.xml
 
