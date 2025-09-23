@@ -24,5 +24,42 @@
 		"python.analysis.inlayHints.callArgumentNames": "partial",
 		"python.analysis.inlayHints.functionReturnTypes": true,
 		"python.analysis.typeCheckingMode": "basic"
+	},
+	"extensions": {
+		"recommendations": [
+			"donjayamanne.python-extension-pack",
+			"ms-vscode.vscode-typescript-next",
+			"ms-python.python",
+			"hediet.vscode-drawio",
+			"redhat.vscode-xml"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Run Server",
+				"type": "shell",
+				"command": "make",
+				"args": ["start"],
+				"group": {"kind": "build", "isDefault": true},
+				"problemMatcher": []
+			},
+			{
+				"label": "Generate doc",
+				"type": "shell",
+				"args": ["gen_doc"],
+				"command": "make",
+				"group": {"kind": "build", "isDefault": false},
+				"problemMatcher": []
+			}
+		],
+		"inputs": [
+			{
+				"id": "event",
+				"type": "promptString",
+				"description": "Enter the event string to decode"
+			}
+		]
 	}
 }
