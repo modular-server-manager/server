@@ -144,7 +144,7 @@
                 <arg name="server_name" type="str" id="0x02" />
             </args>
             <description>Request to ping a server. </description>
-            <return type="str" description="Returns the server's status as a string: \"online\", \"offline\", or \"starting\"."/>
+            <return type="str" description="Returns the server's status as a string: &quot;online&quot;, &quot;offline&quot;, or &quot;starting&quot;."/>
         </event>
         <event name="SEED" id="0x0011">
             <args>
