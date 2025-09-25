@@ -46,6 +46,11 @@
 						"label": "Generate doc",
 						"task": "Generate doc",
 						"tooltip": "Regenerate the documentation files"
+					},
+					{
+						"label": "Build app",
+						"task": "Build app",
+						"tooltip": "Build the application (equivalent to 'make install')"
 					}
 				],
 				"tooltip": "Start the server, build it if necessary\n(equivalent to 'make start')",
@@ -97,13 +102,29 @@
 					"clear": false
 				}
 			},
-			
 			{
 				"label": "Decode Event",
 				"type": "shell",
 				"command": "env/bin/mc-srv-manager-event-decoder",
 				"args": ["${input:event}", "${input:raw_mode}", "${input:has_prefix}"],
 				"group": {"kind": "none", "isDefault": false},
+				"problemMatcher": [],
+				"presentation": {
+					"echo": false,
+					"reveal": "always",
+					"focus": false,
+					"panel": "shared",
+					"showReuseMessage": false,
+					"clear": false
+				},
+				
+			},
+			{
+				"label": "Build app",
+				"type": "shell",
+				"command": "make",
+				"args": ["install"],
+				"group": {"kind": "build", "isDefault": false},
 				"problemMatcher": [],
 				"presentation": {
 					"echo": false,
