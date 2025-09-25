@@ -1,5 +1,6 @@
 import os.path
 import json
+import sys
 
 from .bus.events import Events, Event
 
@@ -50,14 +51,22 @@ def generate_event_md(event : Event, event_desc : str, args_descs : dict[str, st
 
 def main():
     desc = load_event_descriptions()
-    with open("EVENTS.md", "w") as f:
-        f.write("# Events\n\n")
-        for event in Events.events.values():
-            event_data = desc.get(f"{event.id:#06x}", {})
-            f.write(generate_event_md(
-                                    event, 
-                                    event_data.get("description", ""), #type: ignore
-                                    event_data.get("arguments", {}),   #type: ignore
-                                    event_data.get("return", "")      #type: ignore
-                                    ))
-            f.write("\n---\n")
+    try:
+        with open("../forge-server-manager.wiki/events.md", "w") as f:
+            f.write("# Events\n\n")
+            for event in Events.events.values():
+                event_data = desc.get(f"{event.id:#06x}", {})
+                f.write(generate_event_md(
+                                        event, 
+                                        event_data.get("description", ""), #type: ignore
+                                        event_data.get("arguments", {}),   #type: ignore
+                                        event_data.get("return", "")      #type: ignore
+                                        ))
+                f.write("\n---\n")
+        return 0
+    except Exception as e:
+        print(f"Error writing to wiki file: {e}")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
