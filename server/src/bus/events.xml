@@ -1,7 +1,9 @@
-<?xml version="1.0" ?>
-<events>
+<?xml version="1.0"?>
+<events xmlns="http://forge-server-manager.local/events"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://forge-server-manager.local/events
+    https://raw.githubusercontent.com/AntoineBuirey/xml-schema/refs/heads/main/mc-server-manager/events.xsd">
     <namespace name="SERVER">
-    
         <event name="STARTING" id="0x0001">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
@@ -128,7 +130,7 @@
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
             </args>
-            <return type="str"/>
+            <return type="str" />
         </event>
         <event name="SEED" id="0x0011">
             <args>
