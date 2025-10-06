@@ -2,7 +2,7 @@
 <events xmlns="http://forge-server-manager.local/events"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://forge-server-manager.local/events
-    https://raw.githubusercontent.com/AntoineBuirey/xml-schema/refs/heads/main/mc-server-manager/events.xsd">
+    https://raw.githubusercontent.com/AntoineBuirey/xml-schema/refs/tags/1.0.4/mc-server-manager/events.xsd">
     <namespace name="SERVER">
         <event name="STARTING" id="0x0001">
             <args>
