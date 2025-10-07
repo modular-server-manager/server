@@ -5,6 +5,7 @@ from json import dumps as json_dumps
 from json import loads as json_loads
 from typing import Any, Callable, List
 from xml.etree import ElementTree as ET
+import traceback
 
 from gamuLogger import Logger
 from version import Version
@@ -31,6 +32,8 @@ GROUP_SEPARATOR = "\x1d"   # ASCII Group Separator (GS) character
 RECORD_SEPARATOR = "\x1e"  # ASCII Record Separator (RS) character
 UNIT_SEPARATOR = "\x1f"    # ASCII Unit Separator (US) character
 
+
+XML_XMLNS = "{http://forge-server-manager.local/events}"
 
 
 class EncodedEvent:
@@ -430,28 +433,28 @@ class EventsType:
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse XML file {xml_path}: {e}") from None
         root = tree.getroot()
-        for namespace in root.findall('namespace'):
+        for namespace in root.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(namespace, namespace.get('name') or "global")
         Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
         Logger.debug(f"Parsing namespace: {namespace_name}")
-        for sub_namespace in namespace.findall('namespace'):
+        for sub_namespace in namespace.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(
                 sub_namespace,
                 f"{namespace_name}.{sub_namespace.get('name')}"
             )
-        for event in namespace.findall('event'):
+        for event in namespace.findall(f'{XML_XMLNS}event'):
             event_name = f"{namespace_name}.{event.get('name')}"
             event_id = int(event.get('id'), 16) #type: ignore
             if not event_id:
                 raise ValueError(f"Event {event_name} does not have an ID")
             args = [
                 EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16)) #type: ignore
-                for arg in event.find('args').findall('arg') #type: ignore
+                for arg in event.find(f'{XML_XMLNS}args').findall(f'{XML_XMLNS}arg') #type: ignore
             ]
 
-            return_type = event.find('return').get('type') #type: ignore
+            return_type = event.find(f'{XML_XMLNS}return').get('type') #type: ignore
             Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
@@ -503,4 +506,5 @@ try:
     )
 except Exception as e:
     Logger.fatal(f"Failed to load events from XML file: {e}")
+    Logger.trace(traceback.format_exc())
     sys.exit(1)
