@@ -20,7 +20,7 @@ dependencies = [
     "itsdangerous==2.2.0",
     "Jinja2==3.1.6",
     "MarkupSafe==3.0.2",
-    "requests==2.32.4",
+    "requests>=2.32.4",
     "soupsieve==2.7",
     "typing_extensions==4.13.2",
     "urllib3==2.5.0",
@@ -29,11 +29,11 @@ dependencies = [
     "eventlet==0.40.3",
     "greenlet==3.2.1",
     "python-socketio==5.14.0",
-    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/cache-1.1.4-py3-none-any.whl",
-    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/config-1.1.4-py3-none-any.whl",
-    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/http_code-1.1.4-py3-none-any.whl",
-    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/version-1.1.4-py3-none-any.whl",
-    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/singleton-1.1.4-py3-none-any.whl"
+    "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/cache-1.1.6-py3-none-any.whl",
+    "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/config-1.1.6-py3-none-any.whl",
+    "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/http_code-1.1.6-py3-none-any.whl",
+    "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/version-1.1.6-py3-none-any.whl",
+    "singleton @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/singleton-1.1.6-py3-none-any.whl"
 ]
 
 [project.scripts]

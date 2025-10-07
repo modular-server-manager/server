@@ -22,7 +22,7 @@ Logger.set_module("Core.Core")
 class Core:
     def __init__(self, config_file: str):
         Logger.info("Initializing Core")
-        self.__config = JSONConfig(config_file)
+        self.__config = JSONConfig(config_file, True)
         self.__running = False
 
         # Initialize the bus dispatcher (will run in a separate thread)
