@@ -284,7 +284,7 @@ class BaseInterface:
         path: str,
         autostart: bool,
         mc_version: Version,
-        modloader_version: Version = None,
+        modloader_version: Version|None = None,
         ram: int = 1024,
     ) -> None:
         """
