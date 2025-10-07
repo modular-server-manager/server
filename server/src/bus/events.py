@@ -1,9 +1,7 @@
 import os
 import sys
 from datetime import datetime
-from json import dumps as json_dumps
-from json import loads as json_loads
-from typing import Any, Callable, List
+from typing import Any, List
 from xml.etree import ElementTree as ET
 import traceback
 
