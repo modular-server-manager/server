@@ -225,6 +225,11 @@ class Bus:
                     event, args = Event.decode(msg)
                     Logger.debug(f"Received message: {event} with args: {args}")
                     Logger.trace(f"Raw data: {msg} (Length: {len(msg)} bytes)")
+                except Exception as e:
+                    Logger.error(f"Error decoding message {msg}: {e.__class__.__name__} : {e}")
+                    Logger.debug(traceback.format_exc())
+                    continue
+                try:
                     if event.id in self.__subscribers:
                         def a():
                             try:

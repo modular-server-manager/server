@@ -1,0 +1,323 @@
+{
+    "0x0001": {
+        "description": "Fired when a server is starting.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that is starting"
+        },
+        "return": "Nothing"
+    },
+    "0x0002": {
+        "description": "Fired after a server has started.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that has started"
+        },
+        "return": "Nothing"
+    },
+    "0x0003": {
+        "description": "Fired when a server is stopping.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that is stopping"
+        },
+        "return": "Nothing"
+    },
+    "0x0004": {
+        "description": "Fired after a server has stopped.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that has stopped"
+        },
+        "return": "Nothing"
+    },
+    "0x0005": {
+        "description": "Fired when a server has crashed.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that has crashed"
+        },
+        "return": "Nothing"
+    },
+    "0x0006": {
+        "description": "Request to start a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to start"
+        },
+        "return": "Nothing"
+    },
+    "0x0007": {
+        "description": "Request to stop a server.  The emmitter will wait for the server to stop before returning.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to stop"
+        },
+        "return": "True if the server was stopped successfully, False otherwise"
+    },
+    "0x0008": {
+        "description": "Request to restart a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to restart"
+        },
+        "return": "Nothing"
+    },
+    "0x0009": {
+        "description": "Request to create a new server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to create",
+            "003": "the type of the server to create",
+            "004": "the path where the server will be created",
+            "005": "whether the server should autostart",
+            "006": "the Minecraft version for the server",
+            "007": "the modloader version (if not vanilla)",
+            "008": "the amount of RAM to allocate"
+        },
+        "return": "Nothing"
+    },
+    "0x000a": {
+        "description": "Request to delete a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to delete"
+        },
+        "return": "Nothing"
+    },
+    "0x000b": {
+        "description": "Request to rename a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the current name of the server",
+            "003": "the new name for the server"
+        },
+        "return": "Nothing"
+    },
+    "0x000c": {
+        "description": "Fired after a server has been created.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that was created",
+            "003": "the type of the server",
+            "004": "the path where the server was created",
+            "005": "whether the server should autostart",
+            "006": "the Minecraft version for the server",
+            "007": "the modloader version (if not vanilla)",
+            "008": "the amount of RAM allocated"
+        },
+        "return": "Nothing"
+    },
+    "0x000d": {
+        "description": "Fired after a server has been deleted.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server that was deleted"
+        },
+        "return": "Nothing"
+    },
+    "0x000e": {
+        "description": "Fired after a server has been renamed.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the previous name of the server",
+            "003": "the new name of the server"
+        },
+        "return": "Nothing"
+    },
+    "0x000f": {
+        "description": "Request a list of all servers.",
+        "arguments": {
+            "001": "the exact time the message was sent"
+        },
+        "return": "A list of dictionaries, each containing server information"
+    },
+    "0x0010": {
+        "description": "Request to ping a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server to ping"
+        },
+        "return": "Returns the server's status as a string: \"online\", \"offline\", or \"starting\"."
+    },
+    "0x0011": {
+        "description": "Request the world seed of a server. Returns the seed as a string.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server"
+        },
+        "return": "The world seed as a string"
+    },
+    "0x0012": {
+        "description": "Request detailed information about a server. Returns a dictionary containing server information.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server"
+        },
+        "return": "A dictionary containing server information"
+    },
+    "0x0013": {
+        "description": "Fired when a server is being created.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server being created",
+            "003": "the type of the server",
+            "004": "the path where the server will be created",
+            "005": "whether the server should autostart",
+            "006": "the Minecraft version for the server",
+            "007": "the modloader version (if not vanilla)",
+            "008": "the amount of RAM to allocate"
+        },
+        "return": "Nothing"
+    },
+    "0x0014": {
+        "description": "Request the time a server was started. Returns a datetime object representing the start time.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server"
+        },
+        "return": "The datetime object representing the server's start time"
+    },
+    "0x0101": {
+        "description": "Fired when a console message is received from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the sender of the message",
+            "004": "the message content"
+        },
+        "return": "Nothing"
+    },
+    "0x0102": {
+        "description": "Fired when a log message is received from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the log content"
+        },
+        "return": "Nothing"
+    },
+    "0x0103": {
+        "description": "Request to send a message to a server's console.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the sender of the message",
+            "004": "the message content"
+        },
+        "return": "Nothing"
+    },
+    "0x0104": {
+        "description": "Request to send a command to a server's console.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the command to send"
+        },
+        "return": "Nothing"
+    },
+    "0x0201": {
+        "description": "Fired when a player joins a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player who joined"
+        },
+        "return": "Nothing"
+    },
+    "0x0202": {
+        "description": "Fired when a player leaves a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player who left"
+        },
+        "return": "Nothing"
+    },
+    "0x0203": {
+        "description": "Fired when a player is kicked from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player who was kicked"
+        },
+        "return": "Nothing"
+    },
+    "0x0204": {
+        "description": "Fired when a player is banned from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player who was banned"
+        },
+        "return": "Nothing"
+    },
+    "0x0205": {
+        "description": "Fired when a player is pardoned (unbanned) from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player who was pardoned"
+        },
+        "return": "Nothing"
+    },
+    "0x0206": {
+        "description": "Request to kick a player from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player to kick",
+            "004": "the reason for kicking the player"
+        },
+        "return": "Nothing"
+    },
+    "0x0207": {
+        "description": "Request to ban a player from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player to ban",
+            "004": "the reason for banning the player"
+        },
+        "return": "Nothing"
+    },
+    "0x0208": {
+        "description": "Request to pardon (unban) a player from a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server",
+            "003": "the name of the player to pardon"
+        },
+        "return": "Nothing"
+    },
+    "0x0209": {
+        "description": "Request a list of all players currently online on a server.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the name of the server"
+        },
+        "return": "the list of online players"
+    },
+    "0x0301": {
+        "description": "Request a list of all available Minecraft versions.",
+        "arguments": {
+            "001": "the exact time the message was sent"
+        },
+        "return": "A list of available Minecraft versions"
+    },
+    "0x0302": {
+        "description": "Request a list of all available Forge versions for a specific Minecraft version.",
+        "arguments": {
+            "001": "the exact time the message was sent",
+            "002": "the Minecraft version"
+        },
+        "return": "A list of dictionaries, each containing one Forge version and information about it"
+    },
+    "0x0401": {
+        "description": "Request a list of all available Minecraft directories.",
+        "arguments": {
+            "001": "the exact time the message was sent"
+        },
+        "return": "A list of available Minecraft directories, set in the config file"
+    }
+}

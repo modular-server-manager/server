@@ -103,6 +103,7 @@ async function init_create_server_form() {
             clear_select_options(document.getElementById('modloader-version') as HTMLSelectElement);
         }
     });
+    update_modloader_versions(mcVersions[0]);
 
     const serverPathInput = document.getElementById('server-path') as HTMLSelectElement;
     const serverPaths = await API.get_mc_server_dirs();
@@ -180,4 +181,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     await init_create_server_form();
     await fill_server_list();
     await init_misc();
+    console.log("Dashboard initialized.");
 });

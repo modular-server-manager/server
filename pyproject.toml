@@ -39,6 +39,7 @@ dependencies = [
 [project.scripts]
 mc-srv-manager = "mc_srv_manager.__main__:main"
 mc-srv-manager-event-decoder = "mc_srv_manager.decode_event:main"
+mc-srv-manager-doc-gen = "mc_srv_manager.gen_doc:main"
 
 [tool.setuptools]
 packages = ["mc_srv_manager",
@@ -55,7 +56,13 @@ packages = ["mc_srv_manager",
                 "mc_srv_manager.client",
                     "mc_srv_manager.client.assets"
             ]
-package-data = { "mc_srv_manager" = ["client/**", "config.json", "minecraft/properties.xml", "bus/events.xml"] }
+package-data = { "mc_srv_manager" = [
+    "client/**",
+    "config.json",
+    "minecraft/properties.xml",
+    "bus/events.xml",
+    "events_descriptions.json",
+] }
 include-package-data = true
 
 [tool.pytest.ini_options]

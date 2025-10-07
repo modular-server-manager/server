@@ -1,7 +1,9 @@
-<?xml version="1.0" ?>
-<events>
+<?xml version="1.0"?>
+<events xmlns="http://forge-server-manager.local/events"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://forge-server-manager.local/events
+    https://raw.githubusercontent.com/AntoineBuirey/xml-schema/refs/tags/1.0.4/mc-server-manager/events.xsd">
     <namespace name="SERVER">
-    
         <event name="STARTING" id="0x0001">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
@@ -68,7 +70,7 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
             <return type="None" />
@@ -97,7 +99,7 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
             <return type="None" />
@@ -123,7 +125,7 @@
             </args>
             <return type="List[Dict[str, Any]]" />
         </event>
-        <event name="PING" id="0x0010"> <!-- This event is used to check if the server is online -->
+        <event name="PING" id="0x0010">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />
@@ -152,12 +154,12 @@
                 <arg name="server_path" type="str" id="0x04" />
                 <arg name="autostart" type="bool" id="0x05" />
                 <arg name="mc_version" type="Version" id="0x06" />
-                <arg name="modloader_version" type="Version" id="0x07" /> <!-- only used if server_type is not vanilla -->
+                <arg name="modloader_version" type="Version" id="0x07" />
                 <arg name="ram" type="int" id="0x08" />
             </args>
             <return type="None" />
         </event>
-        <event name="STARTED_AT" id="0x0105">
+        <event name="STARTED_AT" id="0x0014">
             <args>
                 <arg name="timestamp" type="datetime" id="0x01" />
                 <arg name="server_name" type="str" id="0x02" />

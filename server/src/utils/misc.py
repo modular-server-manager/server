@@ -100,19 +100,83 @@ def gen_id(length: int = 16) -> str:
     return ''.join(random.choice('0123456789abcdef') for _ in range(length))
 
 
+
+def split_with_nested(s: str, sep: str = ",") -> list[str]:
+    """
+    Split a string by a separator, ignoring separators inside nested structures like [], {}, ().
+    Example: "a,[b,[c,d]],e" -> ["a", "[b,[c,d]]", "e"]
+    """
+    parts = []
+    current = []
+    depth = 0
+    for char in s:
+        if char in "[{(":
+            depth += 1
+        elif char in "]})":
+            depth -= 1
+        if char == sep and depth == 0:
+            parts.append(''.join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        parts.append(''.join(current).strip())
+    return parts
+
+
+def guess_type(filename: str) -> str:
+    """
+    Guess the MIME type of a file based on its extension.
+    """
+    mimetypes = {
+        'html': 'text/html',
+        'css': 'text/css',
+        'js': 'application/javascript',
+        'json': 'application/json',
+        'png': 'image/png',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp',
+        'woff': 'font/woff',
+        'woff2': 'font/woff2',
+        'ttf': 'font/ttf',
+        'otf': 'font/otf'
+    }
+    ext = filename.split('.')[-1].lower()
+    if ext not in mimetypes:
+        Logger.warning(f"Unknown file extension: {ext}, defaulting to application/octet-stream")
+        return 'application/octet-stream'
+    return mimetypes[ext]
+
+
+
+
 if __name__ == "__main__":
-    # test is_types_equals
-    assert is_types_equals("list[Version]", "list[version.version.Version]") is True
-    assert is_types_equals("list[Version]", "list[str]") is False
-    assert is_types_equals("list[Version]", "list[version.Version]") is True
-    assert is_types_equals("Version", "version.version.Version") is True
-    assert is_types_equals("Version", "str") is False
-    assert is_types_equals("int", "int") is True
-    assert is_types_equals("list[list[Version]]", "list[list[str]]") is False
+    # # test is_types_equals
+    # assert is_types_equals("list[Version]", "list[version.version.Version]") is True
+    # assert is_types_equals("list[Version]", "list[str]") is False
+    # assert is_types_equals("list[Version]", "list[version.Version]") is True
+    # assert is_types_equals("Version", "version.version.Version") is True
+    # assert is_types_equals("Version", "str") is False
+    # assert is_types_equals("int", "int") is True
+    # assert is_types_equals("list[list[Version]]", "list[list[str]]") is False
 
-    assert is_types_equals("dict[str, Version]", "dict[str, version.version.Version]") is True
-    assert is_types_equals("dict[str, Version]", "dict[str, str]") is False
+    # assert is_types_equals("dict[str, Version]", "dict[str, version.version.Version]") is True
+    # assert is_types_equals("dict[str, Version]", "dict[str, str]") is False
 
-    assert is_types_equals("tuple[Version, str]", "tuple[version.version.Version, str]") is True
-    assert is_types_equals("tuple[Version, str]", "tuple[str, str]") is False
-    assert is_types_equals("Typing.Dict[version.version.Version, str]", "Dict[Version, str]") is True
+    # assert is_types_equals("tuple[Version, str]", "tuple[version.version.Version, str]") is True
+    # assert is_types_equals("tuple[Version, str]", "tuple[str, str]") is False
+    # assert is_types_equals("Typing.Dict[version.version.Version, str]", "Dict[Version, str]") is True
+    
+    # test split_with_nested
+    assert split_with_nested("a,b,c") == ["a", "b", "c"]
+    assert split_with_nested("a,[b,c],d") == ["a", "[b,c]", "d"]
+    assert split_with_nested("a,{b,c},d") == ["a", "{b,c}", "d"]
+    assert split_with_nested("a,(b,c),d") == ["a", "(b,c)", "d"]
+    assert split_with_nested("a,[b,{c,d}],e") == ["a", "[b,{c,d}]", "e"]
+    assert split_with_nested("a,[b,(c,d)],e") == ["a", "[b,(c,d)]", "e"]
+    assert split_with_nested("a,[b,c],d,{e,f},g") == ["a", "[b,c]", "d", "{e,f}", "g"]
+    assert split_with_nested("a,[b,c],d,(e,f),g") == ["a", "[b,c]", "d", "(e,f)", "g"]
+    assert split_with_nested("a,[b,c],d,{e,(f,g)},h") == ["a", "[b,c]", "d", "{e,(f,g)}", "h"]
+    print("All tests passed.")

@@ -5,19 +5,35 @@ from json import dumps as json_dumps
 from json import loads as json_loads
 from typing import Any, Callable, List
 from xml.etree import ElementTree as ET
+import traceback
 
 from gamuLogger import Logger
 from version import Version
+
+from ..utils.regex import (RE_DICT_TYPE, RE_LIST_TYPE, RE_TUPLE_TYPE,
+                        RE_ENCODED_DICT, RE_ENCODED_LIST, RE_ENCODED_TUPLE)
+from ..utils.misc import split_with_nested
 
 Logger.set_module("Bus.Events")
 
 __FILE_DIR__ = os.path.dirname(__file__)
 
+
+#used in composite arguments encoding
+NEGATIVE_ACKNOWLEDGE = "\x15"  # ASCII Negative Acknowledge (NAK) character
+SYNCHRONOUS_IDLE = "\x16"  # ASCII Synchronous Idle (SYN) character
+END_OF_TRANSMISSION_BLOCK = "\x17"  # ASCII End of Transmission Block (ETB) character
+CANCEL = "\x18"  # ASCII Cancel (CAN) character
+END_OF_MEDIUM = "\x19"  # ASCII End of Medium (EM) character
+
+#used in the encoding of events and their arguments
 FILE_SEPARATOR = "\x1c"    # ASCII File Separator (FS) character
 GROUP_SEPARATOR = "\x1d"   # ASCII Group Separator (GS) character
 RECORD_SEPARATOR = "\x1e"  # ASCII Record Separator (RS) character
 UNIT_SEPARATOR = "\x1f"    # ASCII Unit Separator (US) character
 
+
+XML_XMLNS = "{http://forge-server-manager.local/events}"
 
 
 class EncodedEvent:
@@ -115,18 +131,186 @@ class EncodedEvent:
             else:
                 raise KeyError(f"Argument with ID {arg_id} not found in event {event.name}")
         return event, args
+    
+def guess_type(data: Any) -> str:
+    original_type = type(data).__name__
+    guessed_type = original_type
+    if original_type == "dict": # explore dict to find key and value types
+        if data:
+            key_types = set()
+            value_types = set()
+            for key, value in data.items():
+                key_types.add(guess_type(key))
+                value_types.add(guess_type(value))
+            if len(key_types) == 1:
+                key_type = key_types.pop()
+            else:
+                key_type = '|'.join(sorted(key_types))
+            if len(value_types) == 1:
+                value_type = value_types.pop()
+            else:
+                value_type = '|'.join(sorted(value_types))
+            guessed_type = f"dict[{key_type}, {value_type}]"
+        else:
+            guessed_type = "dict" # empty dict, cannot guess types
+    elif original_type == "list": # explore list to find item type
+        if data:
+            item_types = set(guess_type(item) for item in data)
+            if len(item_types) == 1:
+                item_type = item_types.pop()
+            else:
+                item_type = '|'.join(sorted(item_types))
+            guessed_type = f"list[{item_type}]"
+        else:
+            guessed_type = "list" # empty list, cannot guess type
+    elif original_type == "tuple": # explore tuple to find item types
+        if data:
+            item_types = [guess_type(item) for item in data]
+            guessed_type = f"tuple[{', '.join(item_types)}]"  
+        else:  
+            guessed_type = "tuple" # empty tuple, cannot guess types
+    Logger.trace(f"Guessed type {original_type} -> {guessed_type}")
+    return guessed_type
+
+def encode(data : Any, data_type : str) -> str:
+    """
+    Encodes data into a string based on its type.
+    """
+    Logger.trace(f"Encoding data: {data}\nas type: {data_type}")
+    if data_type == "int":
+        return str(int(data))
+    elif data_type == "float":
+        return str(float(data))
+    elif data_type in ("str", "string"):
+        return str(data)
+    elif data_type == "Version":
+        if not isinstance(data, Version):
+            raise TypeError("Expected a Version instance")
+        return str(data)
+    elif data_type == "bool":
+        return "t" if data else "f"
+    elif data_type == "datetime":
+        if not isinstance(data, datetime):
+            raise TypeError("Expected a datetime instance")
+        return str(int(data.timestamp()))
+    elif match_res := RE_LIST_TYPE.match(data_type):
+        if not isinstance(data, list):
+            raise TypeError("Expected a list")
+        item_type = match_res.group(1)
+        result = "[" + NEGATIVE_ACKNOWLEDGE.join(
+            encode(item, item_type.strip()) for item in data
+        ) + "]"
+        return result
+    elif match_res := RE_TUPLE_TYPE.match(data_type):
+        if not isinstance(data, tuple):
+            raise TypeError("Expected a tuple")
+        inner_types = split_with_nested(match_res.group(1))
+        if len(inner_types) != len(data):
+            raise ValueError(f"Expected a tuple of {len(inner_types)} elements, got {len(data)}")
+        result = "(" + NEGATIVE_ACKNOWLEDGE.join(
+            encode(item, item_type.strip()) for item, item_type in zip(data, inner_types)
+        ) + ")"
+        return result
+    elif match_res := RE_DICT_TYPE.match(data_type):
+        if not isinstance(data, dict):
+            raise TypeError("Expected a dict")
+        inner_types = split_with_nested(match_res.group(1))
+        if len(inner_types) != 2:
+            raise ValueError("Expected a dict with two types (key and value)")
+        key_type = inner_types[0].strip()
+        value_type = inner_types[1].strip()
+        result = "{" + NEGATIVE_ACKNOWLEDGE.join(
+            f"{encode(key, key_type)}{SYNCHRONOUS_IDLE}{encode(value, value_type)}"
+            for key, value in data.items()
+        ) + "}"
+        return result
+    elif data_type == "Any": # in that case, the type will be guessed from the data, then added as a prefix of the value
+        guessed_type = guess_type(data)
+        encoded_data = encode(data, guessed_type)
+        return f"{guessed_type}{END_OF_MEDIUM}{encoded_data}"
+    else:
+        raise ValueError(f"Unknown data type: {data_type}")
+
+
+def decode(data: str, data_type: str) -> Any:
+    """
+    Decodes a string into data based on its type.
+    """
+    
+    if data_type == "Any": # in that case, the type is prefixed to the data, separated by END_OF_MEDIUM
+        if END_OF_MEDIUM not in data:
+            raise ValueError("Expected type prefix in data for 'Any' type")
+        type_prefix, actual_data = data.split(END_OF_MEDIUM, 1)
+        return decode(actual_data, type_prefix)
+    
+    Logger.trace(f"Decoding data: {data}\nas type: {data_type}")
+    if data_type == "int":
+        return int(data)
+    elif data_type == "float":
+        return float(data)
+    elif data_type in ("str", "string"):
+        return data
+    elif data_type == "Version":
+        return Version.from_string(data)
+    elif data_type == "bool":
+        if data not in ("t", "f"):
+            raise ValueError("Expected 't' or 'f' for bool type")
+        return data == "t"
+    elif data_type == "datetime":
+        return datetime.fromtimestamp(int(data))
+    elif match_res := RE_LIST_TYPE.match(data_type):
+        item_type = match_res.group(1)
+        if not (match := RE_ENCODED_LIST.match(data)):
+            raise ValueError(f"Expected an encoded list for data: {data}")
+        items_str = split_with_nested(match.group(1), NEGATIVE_ACKNOWLEDGE) if match.group(1) else []
+        return [
+            decode(item_str, item_type.strip()) for item_str in items_str
+        ]
+    elif match_res := RE_TUPLE_TYPE.match(data_type):
+        inner_types = split_with_nested(match_res.group(1))
+        if not (match := RE_ENCODED_TUPLE.match(data)):
+            raise ValueError(f"Expected an encoded tuple for data: {data}")
+        items_str = split_with_nested(match.group(1), NEGATIVE_ACKNOWLEDGE) if match.group(1) else []
+        if len(inner_types) != len(items_str):
+            raise ValueError(f"Expected a tuple of {len(inner_types)} elements, got {len(items_str)}")
+        return tuple(
+            decode(item_str, item_type.strip()) for item_str, item_type in zip(items_str, inner_types)
+        )
+    elif match_res := RE_DICT_TYPE.match(data_type):
+        inner_types = split_with_nested(match_res.group(1))
+        if len(inner_types) != 2:
+            raise ValueError("Expected a dict with two types (key and value)")
+        key_type = inner_types[0].strip()
+        value_type = inner_types[1].strip()
+        if not (match := RE_ENCODED_DICT.match(data)):
+            raise ValueError(f"Expected an encoded dict for data: {data}")
+        items_str = split_with_nested(match.group(1), NEGATIVE_ACKNOWLEDGE) if match.group(1) else []
+        result = {}
+        for item_str in items_str:
+            if SYNCHRONOUS_IDLE not in item_str:
+                raise ValueError(f"Malformed dict item: {item_str}")
+            key_str, value_str = item_str.split(SYNCHRONOUS_IDLE, 1)
+            key = decode(key_str, key_type)
+            value = decode(value_str, value_type)
+            result[key] = value
+        return result
+    else:
+        raise ValueError(f"Unknown data type: {data_type}")
+        
+        
 
 class EventArg:
-    type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
-        "int":          (int, str),
-        "float":        (float, str),
-        "str":          (str, str),
-        "string":       (str, str),
-        "Version":      (Version.from_string, str),
-        "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
-        "datetime":     (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
-        "__default":    (json_loads, lambda d: json_dumps(d, ensure_ascii=False, separators=(',', ':'), default=str))
-    }
+    # type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
+    #     "int":          (int, str),
+    #     "float":        (float, str),
+    #     "str":          (str, str),
+    #     "string":       (str, str),
+    #     "Version":      (Version.from_string, str),
+    #     "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
+    #     "datetime":     (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
+    #     "__default":    (json_loads, lambda d: json_dumps(d, ensure_ascii=False, separators=(',', ':'), default=str))
+    # }
+                
 
     def __init__(self, name: str, type: str, id : int):
         self.name = name
@@ -139,23 +323,36 @@ class EventArg:
     def __str__(self):
         return f"{self.name}: {self.type}"
 
-    def convert(self, value: str):
-        if self.type in self.type_map:
-            from_string, _ = self.type_map[self.type]
-        else:
-            from_string, _ = self.type_map["__default"]
+    # def convert(self, value: str):
+    #     if self.type in self.type_map:
+    #         from_string, _ = self.type_map[self.type]
+    #     else:
+    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON deserializer")
+    #         from_string, _ = self.type_map["__default"]
+    #     try:
+    #         return from_string(value)
+    #     except Exception as e:
+    #         raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
+
+    # def to_string(self, value: Any) -> str:
+    #     if self.type in self.type_map:
+    #         _, to_string = self.type_map[self.type]
+    #     else:
+    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON serializer")
+    #         _, to_string = self.type_map["__default"]
+    #     try:
+    #         return to_string(value)
+    #     except Exception as e:
+    #         raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
+    
+    def convert(self, value: str) -> Any:
         try:
-            return from_string(value)
+            return decode(value, self.type)
         except Exception as e:
             raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
-
     def to_string(self, value: Any) -> str:
-        if self.type in self.type_map:
-            _, to_string = self.type_map[self.type]
-        else:
-            _, to_string = self.type_map["__default"]
         try:
-            return to_string(value)
+            return encode(value, self.type)
         except Exception as e:
             raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
 
@@ -236,27 +433,28 @@ class EventsType:
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse XML file {xml_path}: {e}") from None
         root = tree.getroot()
-        for namespace in root.findall('namespace'):
+        for namespace in root.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(namespace, namespace.get('name') or "global")
         Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
         Logger.debug(f"Parsing namespace: {namespace_name}")
-        for sub_namespace in namespace.findall('namespace'):
+        for sub_namespace in namespace.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(
                 sub_namespace,
                 f"{namespace_name}.{sub_namespace.get('name')}"
             )
-        for event in namespace.findall('event'):
+        for event in namespace.findall(f'{XML_XMLNS}event'):
             event_name = f"{namespace_name}.{event.get('name')}"
             event_id = int(event.get('id'), 16) #type: ignore
             if not event_id:
                 raise ValueError(f"Event {event_name} does not have an ID")
             args = [
                 EventArg(arg.get('name'), arg.get('type'), int(arg.get('id', 0), 16)) #type: ignore
-                for arg in event.find('args').findall('arg') #type: ignore
+                for arg in event.find(f'{XML_XMLNS}args').findall(f'{XML_XMLNS}arg') #type: ignore
             ]
-            return_type = event.find('return').get('type') #type: ignore
+
+            return_type = event.find(f'{XML_XMLNS}return').get('type') #type: ignore
             Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
@@ -308,4 +506,5 @@ try:
     )
 except Exception as e:
     Logger.fatal(f"Failed to load events from XML file: {e}")
+    Logger.trace(traceback.format_exc())
     sys.exit(1)

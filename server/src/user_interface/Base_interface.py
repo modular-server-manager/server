@@ -252,15 +252,15 @@ class BaseInterface:
         """
         List all available Minecraft server versions.
         """
-        versions = self.trigger("GET_VERSIONS.MINECRAFT")
-        return [Version.from_string(v) for v in versions] if versions else []
+        versions : list[Version] = self.trigger("GET_VERSIONS.MINECRAFT")
+        return versions
 
     def list_forge_versions(self, mc_version: Version) -> list[Version]:
         """
         List all available Forge versions for the given Minecraft version.
         """
-        versions = self.trigger("GET_VERSIONS.FORGE", mc_version=str(mc_version))
-        return [Version.from_string(v) for v in versions] if versions else []
+        versions = self.trigger("GET_VERSIONS.FORGE", mc_version=mc_version)
+        return versions
 
     def list_servers(self) -> list[Dict[str, Any]]:
         """
@@ -284,7 +284,7 @@ class BaseInterface:
         path: str,
         autostart: bool,
         mc_version: Version,
-        modloader_version: Version = None,
+        modloader_version: Version|None = None,
         ram: int = 1024,
     ) -> None:
         """
@@ -305,7 +305,7 @@ class BaseInterface:
                         server_path=path,
                         autostart=autostart,
                         mc_version=mc_version,
-                        modloader_version=modloader_version or Version("0.0.0"),
+                        modloader_version=modloader_version or Version(0,0,0),
                         ram=ram):
             Logger.debug(f"Server {name} created successfully.")
         else:
