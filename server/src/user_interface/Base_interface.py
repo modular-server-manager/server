@@ -305,7 +305,7 @@ class BaseInterface:
                         server_path=path,
                         autostart=autostart,
                         mc_version=mc_version,
-                        modloader_version=modloader_version or Version("0.0.0"),
+                        modloader_version=modloader_version or Version(0,0,0),
                         ram=ram):
             Logger.debug(f"Server {name} created successfully.")
         else:
