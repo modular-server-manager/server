@@ -1,4 +1,5 @@
 {
+    "$schema": "https://raw.githubusercontent.com/AntoineBuirey/xml-json-schema/refs/tags/1.1.1/mc-server-manager/config.schema",
     "app_data_path" : "/var/minecraft", // base path for most data
     "minecraft_servers_dirs" : [
         "${app_data_path}/servers"
