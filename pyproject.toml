@@ -28,7 +28,7 @@ dependencies = [
     "dnspython==2.7.0",
     "eventlet==0.40.3",
     "greenlet==3.2.1",
-    "python-socketio==5.13.0",
+    "python-socketio==5.14.0",
     "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/cache-1.1.4-py3-none-any.whl",
     "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/config-1.1.4-py3-none-any.whl",
     "http_code @ https://github.com/T0ine34/python-sample/releases/download/1.1.4/http_code-1.1.4-py3-none-any.whl",
