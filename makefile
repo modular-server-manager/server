@@ -42,7 +42,7 @@ mc_srv_manager/client/login/index.html:     client/src/metadata.template client/
 PYPROJECT = pyproject.toml
 
 PYTHON_PATH = $(shell if [ -d env/bin ]; then echo "env/bin/"; elif [ -d env/Scripts ]; then echo "env/Scripts/"; else echo ""; fi)
-PYTHON_LIB = $(shell if [ -d env/lib/python3.12/site-packages ]; then echo "env/lib/python3.12/site-packages/"; elif [ -d env/Lib/site-packages ]; then echo "env/Lib/site-packages/"; else echo ""; fi)
+PYTHON_LIB = $(shell find env/lib -type d -name "site-packages" | head -n 1; if [ -d env/Lib/site-packages ]; then echo "env/Lib/site-packages/"; fi)
 PYTHON = $(PYTHON_PATH)python
 
 EXECUTABLE_EXTENSION = $(shell if [ -d env/bin ]; then echo ""; elif [ -d env/Scripts ]; then echo ".exe"; else echo ""; fi)
@@ -138,10 +138,11 @@ test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG
 install: $(APP_EXECUTABLE)
 
 start: install
-	@$(APP_EXECUTABLE)  --log-file server.log:TRACE \
-		--log-file server.debug.log:DEBUG \
+	@$(APP_EXECUTABLE) \
 		-c /var/minecraft/config.json \
-		--module-level config:DEBUG \
+		--log-file server.trace.log:TRACE \
+		--log-file server.debug.log:DEBUG \
+		--module-level config:TRACE \
 		--module-level minecraft.properties:DEBUG
 
 tests: clean-tests test-report.xml
