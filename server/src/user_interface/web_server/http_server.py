@@ -6,7 +6,6 @@ import os
 import pathlib
 import traceback
 from datetime import datetime, timedelta
-from mimetypes import guess_type
 from typing import Any, Callable, TypeVar, Union
 
 import argon2.exceptions
@@ -18,7 +17,7 @@ from version import Version
 from ...bus import BusData
 from ...minecraft import McServersModules
 from ...utils.hash import hash_string, verify_hash
-from ...utils.misc import str2bool, time_from_now
+from ...utils.misc import str2bool, time_from_now, guess_type
 from ...utils.regex import RE_MC_SERVER_NAME
 from ..Base_interface import BaseInterface
 from ..database.types import AccessLevel
@@ -180,14 +179,8 @@ class HttpServer(BaseInterface):
                 Logger.trace(f"Serving file: {full_path}")
 
                 content = pathlib.Path(full_path).read_bytes()
-                mimetype = guess_type(path)[0] or 'text/html'
+                mimetype = guess_type(full_path)
                 # Only allow known-safe mimetypes
-                allowed_mimetypes = (
-                    'text/html', 'text/css', 'text/javascript', 'text/json', 'image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'
-                )
-                if mimetype not in allowed_mimetypes:
-                    Logger.warning(f"Unknown mimetype {mimetype} for file {path}, defaulting to application/octet-stream")
-                    mimetype = 'application/octet-stream'
                 Logger.trace(f"Serving {STATIC_PATH}/{path} ({len(content)} bytes) with mimetype {mimetype})")
                 return content, HTTP.OK, {'Content-Type': mimetype}
             except Exception as e:

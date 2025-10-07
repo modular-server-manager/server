@@ -124,6 +124,33 @@ def split_with_nested(s: str, sep: str = ",") -> list[str]:
     return parts
 
 
+def guess_type(filename: str) -> str:
+    """
+    Guess the MIME type of a file based on its extension.
+    """
+    mimetypes = {
+        'html': 'text/html',
+        'css': 'text/css',
+        'js': 'application/javascript',
+        'json': 'application/json',
+        'png': 'image/png',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
+        'webp': 'image/webp',
+        'woff': 'font/woff',
+        'woff2': 'font/woff2',
+        'ttf': 'font/ttf',
+        'otf': 'font/otf'
+    }
+    ext = filename.split('.')[-1].lower()
+    if ext not in mimetypes:
+        Logger.warning(f"Unknown file extension: {ext}, defaulting to application/octet-stream")
+        return 'application/octet-stream'
+    return mimetypes[ext]
+
+
+
 
 if __name__ == "__main__":
     # # test is_types_equals
