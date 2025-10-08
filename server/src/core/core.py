@@ -15,7 +15,7 @@ from ..bus import Bus, BusDispatcher, Events
 from ..utils.misc import gen_id
 from ..minecraft import (McInstallersModules, McServersModules, McInstallersUrls,
                          BaseMcServer, ServerStatus, WebInterface)
-from ..user_interface import BaseInterface, UserInterfaceModules
+from ..user_interface import UserInterfaceModules
 
 Logger.set_module("Core.Core")
 
@@ -147,21 +147,6 @@ class Core:
                 self.stop()  # Stop the core if a critical UI module fails to start
             else:
                 Logger.info(f"User interface module {config['name']} initiated and started successfully.")
-
-    # def __start_user_interfaces(self):
-    #     """
-    #     Starts all user interface modules.
-    #     This method is called when the core is started.
-    #     """
-    #     Logger.info("Starting user interface modules...")
-    #     self.__init_user_interfaces()
-    #     for ui_name, ui_process in self.__ui_processes.items():
-    #         if not ui_process.is_alive():
-    #             Logger.info(f"Starting user interface process {ui_name}...")
-    #             ui_process.start()
-    #             Logger.info(f"User interface process {ui_name} started with PID {ui_process.pid}.")
-    #         else:
-    #             Logger.warning(f"User interface process {ui_name} is already running with PID {ui_process.pid}.")
 
     def __stop_user_interfaces(self):
         """

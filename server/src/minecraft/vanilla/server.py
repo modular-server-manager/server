@@ -70,6 +70,11 @@ class MinecraftServer(BaseMcServer):
         process = self._spawn_server_process()
 
         self._ServerStatus = ServerStatus.STARTING
+        if process.stdout is None:
+            Logger.error("Failed to start server process: stdout is None")
+            self._ServerStatus = ServerStatus.ERROR
+            return
+
         for line in iter(process.stdout.readline, b''):
             if self._ServerStatus in [ServerStatus.STOPPING, ServerStatus.STOPPED]:
                 break
@@ -126,7 +131,7 @@ class MinecraftServer(BaseMcServer):
         if self.__rcon:
             return self.__rcon.send_command(command)
         Logger.warning("RCON connection not established. Cannot send command.")
-        return None
+        return ""
 
     def reload_world(self):
         """
@@ -141,8 +146,8 @@ class MinecraftServer(BaseMcServer):
         return self._ServerStatus
 
 
-    @Cache(expire_in=timedelta(seconds=2))
-    def get_player_list(self):
+    @Cache(expire_in=timedelta(seconds=2)) # type: ignore[reportArgumentType]
+    def get_player_list(self) -> list[str]:
         """
         Get the list of players currently online on the server.
         """
@@ -158,7 +163,7 @@ class MinecraftServer(BaseMcServer):
             Logger.warning("No players online.")
             return []
 
-    @Cache(expire_in=timedelta(hours=1))
+    @Cache(expire_in=timedelta(hours=1)) # type: ignore[reportArgumentType]
     def get_seed(self) -> str:
         """
         Get the seed of the world on the server.
@@ -181,16 +186,18 @@ class MinecraftServer(BaseMcServer):
             return ""
 
 
-    def on_server_stop(self, timestamp: datetime, server_name: str) -> bool:
+    def on_server_stop(self, timestamp: datetime, server_name: str) -> bool|None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received stop signal at {timestamp}.")
             self.stop()
             return True
+        return None
 
-    def on_server_seed(self, timestamp: datetime, server_name: str) -> str:
+    def on_server_seed(self, timestamp: datetime, server_name: str) -> str|None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received seed request at {timestamp}.")
             return self.get_seed()
+        return None
 
     def on_console_send_message(self, timestamp: datetime, server_name: str, _from : str, message: str) -> None:
         if server_name == self.name:
@@ -218,7 +225,8 @@ class MinecraftServer(BaseMcServer):
             Logger.info(f"Server {self.name} received pardon request for player {player_name} at {timestamp}.")
             self.send_command(f"pardon {player_name}")
 
-    def on_player_list(self, timestamp: datetime, server_name: str) -> list[str]:
+    def on_player_list(self, timestamp: datetime, server_name: str) -> list[str]|None:
         if server_name == self.name:
             Logger.info(f"Server {self.name} received player list request at {timestamp}.")
             return self.get_player_list()
+        return None

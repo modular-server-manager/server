@@ -13,7 +13,7 @@ PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
 Logger.set_module('Mc Server.Properties')
 
 class PropertyOption:
-    def __init__(self, name: str, value: str, until: Version = None, introduced: Version = None):
+    def __init__(self, name: str, value: str, until: Version|None = None, introduced: Version|None = None):
         """
         Initialize a property option with a name and value.
 
@@ -45,7 +45,7 @@ class PropertyOption:
         return self.__value
 
     @property
-    def until(self) -> Version:
+    def until(self) -> Version|None:
         """
         Get the version until which the option is valid.
 
@@ -53,7 +53,7 @@ class PropertyOption:
         """
         return self.__until
     @property
-    def introduced(self) -> Version:
+    def introduced(self) -> Version|None:
         """
         Get the version in which the option was introduced.
 
@@ -79,10 +79,18 @@ class PropertyOption:
         :param element: XML element representing the option.
         :return: PropertyOption object.
         """
+        
         name = element.get('label')
         value = element.get('value')
-        until = Version.from_string(element.get('until')) if element.get('until') else None
-        introduced = Version.from_string(element.get('introduced')) if element.get('introduced') else None
+        
+        if name is None or value is None:
+            raise ValueError("Option element must have 'label' and 'value' attributes.")
+        
+        str_until = element.get('until')
+        until = Version.from_string(str_until) if str_until else None
+        
+        str_introduced = element.get('introduced')
+        introduced = Version.from_string(str_introduced) if str_introduced else None
         return cls(name, value, until, introduced)
 
 class Property:
@@ -148,7 +156,7 @@ class Property:
 
         :return: Integer value of the property.
         """
-        if self.__value.isdigit():
+        if self.__value and self.__value.isdigit():
             return int(self.__value)
         raise ValueError(f"Property '{self.__name}' cannot be converted to an integer.")
 
@@ -181,19 +189,30 @@ class Property:
         name = element.get('name')
         default = element.get('default')
         doc = element.get('doc')
-        introduced = Version.from_string(element.get('introduced'))
+        
+        str_introduced = element.get('introduced')
+        introduced = Version.from_string(str_introduced) if str_introduced else Version(0, 0, 0)
 
         data = {}
 
         if 'min' in element.attrib:
-            data['min'] = int(element.get('min'))
+            raw_min = element.get('min')
+            if raw_min is None or not raw_min.isdigit():
+                raise ValueError(f"Invalid 'min' attribute for property '{name}': {raw_min}")
+            data['min'] = int()
         if 'max' in element.attrib:
-            data['max'] = int(element.get('max'))
+            raw_max = element.get('max')
+            if raw_max is None or not raw_max.isdigit():
+                raise ValueError(f"Invalid 'max' attribute for property '{name}': {raw_max}")
+            data['max'] = int(raw_max)
 
         if options := [
             PropertyOption.from_xml(option) for option in element.findall('option')
         ]:
             data['options'] = options
+        
+        if name is None or default is None or doc is None:
+            raise ValueError("Property element must have 'name', 'default', and 'doc' attributes.")
 
         return cls(name, default, doc, introduced, **data)
 
@@ -303,7 +322,7 @@ class Properties:
                 else:
                     raise ValueError(f"Unknown property: {key}")
 
-    def save(self, properties_file: str, mc_version: Version = None):
+    def save(self, properties_file: str, mc_version: Version|None = None):
         """
         Save properties to a file.
 
@@ -313,7 +332,7 @@ class Properties:
         with open(normalized_path, 'w') as file:
             file.write("#Minecraft server properties\n")
             for prop in self.properties(mc_version).values():
-                file.write(f"{prop.to_string(mc_version)}\n")
+                file.write(f"{prop.to_string(mc_version or prop.introduced)}\n")
 
     def __getitem__(self, key: str) -> Property:
         """
@@ -324,7 +343,7 @@ class Properties:
         """
         return self.__properties[key]
 
-    def properties(self, mc_version : Version = None) -> dict[str, Property]:
+    def properties(self, mc_version : Version|None = None) -> dict[str, Property]:
         """
         Get all properties.
 

@@ -297,18 +297,7 @@ def decode(data: str, data_type: str) -> Any:
         
         
 
-class EventArg:
-    # type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
-    #     "int":          (int, str),
-    #     "float":        (float, str),
-    #     "str":          (str, str),
-    #     "string":       (str, str),
-    #     "Version":      (Version.from_string, str),
-    #     "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
-    #     "datetime":     (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
-    #     "__default":    (json_loads, lambda d: json_dumps(d, ensure_ascii=False, separators=(',', ':'), default=str))
-    # }
-                
+class EventArg:   
 
     def __init__(self, name: str, type: str, id : int):
         self.name = name
@@ -321,33 +310,12 @@ class EventArg:
     def __str__(self):
         return f"{self.name}: {self.type}"
 
-    # def convert(self, value: str):
-    #     if self.type in self.type_map:
-    #         from_string, _ = self.type_map[self.type]
-    #     else:
-    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON deserializer")
-    #         from_string, _ = self.type_map["__default"]
-    #     try:
-    #         return from_string(value)
-    #     except Exception as e:
-    #         raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
-
-    # def to_string(self, value: Any) -> str:
-    #     if self.type in self.type_map:
-    #         _, to_string = self.type_map[self.type]
-    #     else:
-    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON serializer")
-    #         _, to_string = self.type_map["__default"]
-    #     try:
-    #         return to_string(value)
-    #     except Exception as e:
-    #         raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
-    
     def convert(self, value: str) -> Any:
         try:
             return decode(value, self.type)
         except Exception as e:
             raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
+
     def to_string(self, value: Any) -> str:
         try:
             return encode(value, self.type)
