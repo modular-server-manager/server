@@ -59,8 +59,9 @@ class Bus:
                 return_str = str(annotations["return"])
         else:
             return_str = "None"
-        if not is_types_equals(str(return_str), event.return_type):
-            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {return_str})")
+        event_return_type = event.return_type
+        if not is_types_equals(return_str, event_return_type):
+            raise ValueError(f"Callback for event {event.name} should return {event_return_type} (got {return_str})")
         for arg in event.args:
             if arg.name not in annotations:
                 raise ValueError(f"Callback for event {event.name} is missing argument {arg.name}")

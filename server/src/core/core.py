@@ -195,7 +195,12 @@ class Core:
             mc_version = Version.from_string(mc_version_raw)
             
             def __start_mc_server():
-                srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                try:
+                    srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                except Exception as e:
+                    Logger.error(f"Failed to initialize server {server_name}: {e}")
+                    Logger.debug(traceback.format_exc())
+                    return
                 srv.start()
             p = mp.Process(
                 target=__start_mc_server,

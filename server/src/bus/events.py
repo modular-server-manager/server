@@ -226,6 +226,10 @@ def encode(data : Any, data_type : str) -> str:
         guessed_type = guess_type(data)
         encoded_data = encode(data, guessed_type)
         return f"{guessed_type}{END_OF_MEDIUM}{encoded_data}"
+    elif data_type == "NoneType":
+        if data is not None:
+            raise ValueError("Expected None for NoneType")
+        return ""
     else:
         raise ValueError(f"Unknown data type: {data_type}")
 
@@ -292,6 +296,10 @@ def decode(data: str, data_type: str) -> Any:
             value = decode(value_str, value_type)
             result[key] = value
         return result
+    elif data_type == "NoneType":
+        if data != "":
+            raise ValueError("Expected empty string for NoneType")
+        return None
     else:
         raise ValueError(f"Unknown data type: {data_type}")
         

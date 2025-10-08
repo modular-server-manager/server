@@ -10,6 +10,8 @@ CONFIG_DIR = os.path.dirname(__file__)
 
 PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
 
+XML_XMLNS = "{http://forge-server-manager.local/properties}"
+
 Logger.set_module('Mc Server.Properties')
 
 class PropertyOption:
@@ -196,8 +198,8 @@ class Property:
         data = {}
 
         if 'min' in element.attrib:
-            raw_min = element.get('min')
-            if raw_min is None or not raw_min.isdigit():
+            raw_min : str = element.get('min') or ''
+            if not raw_min.isdigit():
                 raise ValueError(f"Invalid 'min' attribute for property '{name}': {raw_min}")
             data['min'] = int()
         if 'max' in element.attrib:
@@ -207,7 +209,7 @@ class Property:
             data['max'] = int(raw_max)
 
         if options := [
-            PropertyOption.from_xml(option) for option in element.findall('option')
+            PropertyOption.from_xml(option) for option in element.findall(f"{XML_XMLNS}option")
         ]:
             data['options'] = options
         
@@ -299,7 +301,7 @@ class Properties:
 
         root = fromstring(xml_data)
         for element in root:
-            if element.tag not in ['boolean', 'integer', 'string']:
+            if element.tag not in [f'{XML_XMLNS}boolean', f'{XML_XMLNS}integer', f'{XML_XMLNS}string']:
                 raise ValueError(f"Unknown property type: {element.tag}")
             p = Property.from_xml(element)
             self.__properties[p.name] = p

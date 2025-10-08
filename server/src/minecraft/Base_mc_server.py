@@ -156,7 +156,7 @@ class BaseMcServer(ABC):
         """
         return self.__started_at
 
-    def __on_ping(self, timestamp: datetime, server_name: str) -> str|None:
+    def __on_ping(self, timestamp: datetime, server_name: str) -> str:
         """
         Callback for the SERVER.PING event.
         This method can be overridden by subclasses to handle the ping event.
@@ -165,7 +165,7 @@ class BaseMcServer(ABC):
             Logger.info(f"Server {self.name} received ping at {timestamp}.")
             return self.status.name
         Logger.debug(f"Ping received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
-        return None
+        return None # type: ignore[return]
 
     def __register_callbacks(self):
         for callback_name, event_name in self.available_callbacks.items():
@@ -178,7 +178,7 @@ class BaseMcServer(ABC):
         # Register the ping callback
         self.__bus.register(Events["SERVER.PING"], self.__on_ping)
 
-    def on_started_at(self, timestamp: datetime, server_name: str) -> datetime|None:
+    def on_started_at(self, timestamp: datetime, server_name: str) -> datetime:
         """
         Callback for the STARTED_AT event.
         This method is called when the server starts and can be overridden by subclasses.
@@ -189,4 +189,4 @@ class BaseMcServer(ABC):
         if server_name == self.name:
             return self.__started_at
         Logger.debug(f"Started at event received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
-        return None
+        return None # type: ignore[return]

@@ -186,18 +186,16 @@ class MinecraftServer(BaseMcServer):
             return ""
 
 
-    def on_server_stop(self, timestamp: datetime, server_name: str) -> bool|None:
+    def on_server_stop(self, timestamp: datetime, server_name: str) -> bool: #type: ignore[return]
         if server_name == self.name:
             Logger.info(f"Server {self.name} received stop signal at {timestamp}.")
             self.stop()
             return True
-        return None
 
-    def on_server_seed(self, timestamp: datetime, server_name: str) -> str|None:
+    def on_server_seed(self, timestamp: datetime, server_name: str) -> str: #type: ignore[return]
         if server_name == self.name:
             Logger.info(f"Server {self.name} received seed request at {timestamp}.")
             return self.get_seed()
-        return None
 
     def on_console_send_message(self, timestamp: datetime, server_name: str, _from : str, message: str) -> None:
         if server_name == self.name:
@@ -225,8 +223,7 @@ class MinecraftServer(BaseMcServer):
             Logger.info(f"Server {self.name} received pardon request for player {player_name} at {timestamp}.")
             self.send_command(f"pardon {player_name}")
 
-    def on_player_list(self, timestamp: datetime, server_name: str) -> list[str]|None:
+    def on_player_list(self, timestamp: datetime, server_name: str) -> list[str]: #type: ignore[return]
         if server_name == self.name:
             Logger.info(f"Server {self.name} received player list request at {timestamp}.")
             return self.get_player_list()
-        return None
