@@ -412,7 +412,7 @@ class EventsType:
         Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
-        Logger.debug(f"Parsing namespace: {namespace_name}")
+        Logger.trace(f"Parsing event namespace: {namespace_name}")
         for sub_namespace in namespace.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(
                 sub_namespace,
@@ -429,7 +429,7 @@ class EventsType:
             ]
 
             return_type = event.find(f'{XML_XMLNS}return').get('type') #type: ignore
-            Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
+            Logger.trace(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
             self.events[event_id] = Event(event_name, event_id, args, return_type) #type: ignore

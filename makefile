@@ -142,7 +142,7 @@ start: install
 		-c /var/minecraft/config.json \
 		--log-file server.trace.log:TRACE \
 		--log-file server.debug.log:DEBUG \
-		--module-level config:TRACE \
+		--module-level config:DEBUG \
 		--module-level minecraft.properties:DEBUG
 
 tests: clean-tests test-report.xml
