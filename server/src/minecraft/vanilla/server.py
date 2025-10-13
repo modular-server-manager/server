@@ -1,8 +1,8 @@
-import re
 import subprocess
 import threading as th
 from datetime import datetime, timedelta
 from typing import Callable
+import os
 
 from cache import Cache
 from gamuLogger import Logger
@@ -12,8 +12,7 @@ from ...bus import BusData
 from ..Base_mc_server import BaseMcServer, ServerStatus
 from ..properties import Properties
 from ..rcon import RCON
-
-RE_LOG_TEXT = re.compile(r"^.*\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[.*/([A-Z]+)\] \[.*/(.*)\]: (.*)$") # first match is a color code, second match is the text
+from ...utils.regex import RE_MC_SERVER_LOG_TEXT, RE_JAVA_EXCEPTION
 
 Logger.set_module("Mc Server.Vanilla Server")
 
@@ -74,34 +73,53 @@ class MinecraftServer(BaseMcServer):
             Logger.error("Failed to start server process: stdout is None")
             self._ServerStatus = ServerStatus.ERROR
             return
-
+        
+        os.makedirs(f"{self.path}/logs", exist_ok=True)
+        open(f"{self.path}/logs/latest.log", "w").close() # Clear the log file
+        
         for line in iter(process.stdout.readline, b''):
             if self._ServerStatus in [ServerStatus.STOPPING, ServerStatus.STOPPED]:
                 break
             decoded_line = line.decode('utf-8').strip()
+            
+            with open(f"{self.path}/logs/latest.log", "a", encoding="utf-8") as log_file:
+                log_file.write(f"- {decoded_line}\n")
+            
             if "Done" in decoded_line:
                 self._ServerStatus = ServerStatus.RUNNING
             for l in decoded_line.split("\n"):
-                match = RE_LOG_TEXT.match(l)
-                if not match:
-                    continue
-                level = match.group(1)
-                if level == "INFO":
-                    Logger.info(match.group(3))
-                elif level == "WARN":
-                    Logger.warning(match.group(3))
-                elif level == "ERROR":
-                    Logger.error(match.group(3))
-                elif level == "FATAL":
-                    Logger.fatal(match.group(3))
-                else:
-                    Logger.debug(match.group(3))
-                if match.group(2) == "MinecraftServer" and self.__on_chat_message:
-                    self.__on_chat_message(match.group(3))
+                
+                # check if the line matches the log pattern
+                match = RE_MC_SERVER_LOG_TEXT.match(l)
+                if match:
+                    level = match.group(1)
+                    if level == "INFO":
+                        Logger.info(match.group(3))
+                    elif level == "WARN":
+                        Logger.warning(match.group(3))
+                    elif level == "ERROR":
+                        Logger.error(match.group(3))
+                    elif level == "FATAL":
+                        Logger.fatal(match.group(3))
+                    else:
+                        Logger.debug(match.group(3))
+                    if match.group(2) == "MinecraftServer" and self.__on_chat_message:
+                        self.__on_chat_message(match.group(3))
+                    
+                # check if the line matches the exception pattern
+                match_exception = RE_JAVA_EXCEPTION.match(l)
+                if match_exception:
+                    thread_name = match_exception.group(1)
+                    exception_type = match_exception.group(2)
+                    message = match_exception.group(3)
+                    Logger.error(f"Java Exception in thread '{thread_name}': {exception_type}: {message}")
+                    self._ServerStatus = ServerStatus.ERROR
+                    break
+                    
             if "Failed to start" in decoded_line:
                 self._ServerStatus = ServerStatus.ERROR
                 break
-        Logger.debug(f"waiting for server {self.name} to stop")
+        Logger.debug(f"waiting for server {self.name} to stop with status {self._ServerStatus}")
         process.stdout.close()
         process.wait()
         if self.__rcon:

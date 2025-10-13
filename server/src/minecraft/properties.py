@@ -6,6 +6,8 @@ from xml.etree.ElementTree import Element, fromstring
 from gamuLogger import Logger
 from version import Version
 
+from ..utils.regex import RE_NUMBER
+
 CONFIG_DIR = os.path.dirname(__file__)
 
 PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
@@ -158,7 +160,7 @@ class Property:
 
         :return: Integer value of the property.
         """
-        if self.__value and self.__value.isdigit():
+        if self.__value and RE_NUMBER.match(self.__value):
             return int(self.__value)
         raise ValueError(f"Property '{self.__name}' cannot be converted to an integer.")
 
@@ -199,12 +201,12 @@ class Property:
 
         if 'min' in element.attrib:
             raw_min : str = element.get('min') or ''
-            if not raw_min.isdigit():
+            if not RE_NUMBER.match(raw_min):
                 raise ValueError(f"Invalid 'min' attribute for property '{name}': {raw_min}")
-            data['min'] = int()
+            data['min'] = int(raw_min)
         if 'max' in element.attrib:
             raw_max = element.get('max')
-            if raw_max is None or not raw_max.isdigit():
+            if raw_max is None or not RE_NUMBER.match(raw_max):
                 raise ValueError(f"Invalid 'max' attribute for property '{name}': {raw_max}")
             data['max'] = int(raw_max)
 
