@@ -238,7 +238,7 @@ class Bus:
                             except Exception as e:
                                 Logger.error(f"Error processing event {event.name} with args {args}: {e.__class__.__name__} : {e}")
                                 Logger.debug(traceback.format_exc())
-                        t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
+                        t = th.Thread(target=a, daemon=True, name=f"BusCB-{event.name}")
                         Logger.trace(f"Starting thread for event {event.name} with args {args}\nthread hash: {t.__hash__()}\nthread name: {t.name}")
                         t.start()
                     else:
