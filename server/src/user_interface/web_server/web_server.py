@@ -6,26 +6,24 @@ import socketio
 from eventlet import wsgi
 from gamuLogger import Logger
 from version import Version
+from typing import Any
 
-from ...bus import BusData
-from ...utils.misc import NoLog
-from ..Base_interface import BaseInterface
+from ...utils.misc import NoLog                 # must be moved to a user-interface utils module
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 
 Logger.set_module("User Interface.Web Server")
 
 class WebServer(HttpServer, WebSocketServer):
-    def __init__(self, bus_data : BusData, database_path: str, port: int = 5000):
+    def __init__(self, *args: Any, **kwargs: Any):
         Logger.trace("Initializing WebServer")
         HttpServer.__init__(self,
-            bus_data=bus_data,
-            database_path=database_path,
-            port=port
+            *args,
+            **kwargs
         )
         WebSocketServer.__init__(self,
-            bus_data=bus_data,
-            database_path=database_path
+            *args,
+            **kwargs
         )
 
     def start(self):

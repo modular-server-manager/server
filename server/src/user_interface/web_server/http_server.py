@@ -12,12 +12,10 @@ from gamuLogger import Logger
 from http_code import HttpCode as HTTP
 from version import Version
 
-from ...bus import BusData
-from ...minecraft import McServersModules       # must be removed: inter-module dependency
 from ...utils.misc import str2bool, guess_type  # must be moved to a user-interface utils module
 from ...utils.regex import RE_MC_SERVER_NAME    # must be moved to a user-interface utils module
-from ..Base_interface import BaseInterface
-from ..database.types import AccessLevel
+from ..Base_interface import BaseInterface      # will be changed to be an external dependency
+from ..database.types import AccessLevel        # will be changed to be an external dependency
 
 Logger.set_module("User Interface.Http Server")
 
@@ -41,12 +39,9 @@ FlaskReturnData = (
 )
 
 class HttpServer(BaseInterface):
-    def __init__(self,bus_data : BusData, database_path: str, port: int):
+    def __init__(self, *args: Any, port: int, **kwargs: Any):
         Logger.trace("Initializing HttpServer")
-        BaseInterface.__init__(self,
-            bus_data=bus_data,
-            database_path=database_path
-        )
+        BaseInterface.__init__(self, *args, **kwargs)
         self._port = port
         self.__app = Flask(__name__)
 
@@ -304,7 +299,7 @@ class HttpServer(BaseInterface):
                     Logger.debug("Invalid server name")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
                 server_name = html.escape(server_name.strip())
-                if not server_type or not isinstance(server_type, str) or server_type not in McServersModules:
+                if not server_type or not isinstance(server_type, str):
                     Logger.debug("Invalid server type")
                     return {"message": "Invalid parameters"}, HTTP.BAD_REQUEST
 
