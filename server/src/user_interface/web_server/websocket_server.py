@@ -1,5 +1,6 @@
 import socketio
 from gamuLogger import Logger
+from typing import Any
 
 from ...bus import BusData
 from ..Base_interface import BaseInterface
@@ -25,7 +26,7 @@ class WebSocketServer(BaseInterface):
         def disconnect(sid):
             Logger.info(f"Client disconnected: {sid}")
 
-    def send(self, event: str, data: dict):
+    def send(self, event: str, data: dict[str, Any]):
         """
         Send a message to all connected clients.
 
