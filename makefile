@@ -1,24 +1,24 @@
-.PHONY: all build clean client server tests
+.PHONY: all build clean server tests # client
 
 all: build
 
 TEMP_DIR = build
 
-WEB_SRC_TS = $(wildcard client/src/**/*.ts)
-WEB_SRC_HTML = $(wildcard client/src/**/*.template.html)
-WEB_SRC_SASS = $(wildcard client/src/**/*.scss)
-WEB_ASSETS = $(wildcard client/src/assets/*)
+# WEB_SRC_TS = $(wildcard client/src/**/*.ts)
+# WEB_SRC_HTML = $(wildcard client/src/**/*.template.html)
+# WEB_SRC_SASS = $(wildcard client/src/**/*.scss)
+# WEB_ASSETS = $(wildcard client/src/assets/*)
 
-WEB_DIST_JS = $(patsubst client/src/%.ts,mc_srv_manager/client/%.js,$(WEB_SRC_TS))
-WEB_DIST_HTML = $(patsubst client/src/%.template.html,mc_srv_manager/client/%.html,$(WEB_SRC_HTML))
-WEB_DIST_CSS = $(patsubst client/src/%.scss,mc_srv_manager/client/%.css,$(WEB_SRC_SASS))
-WEB_DIST_ASSETS = $(patsubst client/src/assets/%,mc_srv_manager/client/assets/%,$(WEB_ASSETS))
-WEB_DIST = $(WEB_DIST_JS) $(WEB_DIST_HTML) $(WEB_DIST_CSS) $(WEB_DIST_ASSETS)
+# WEB_DIST_JS = $(patsubst client/src/%.ts,mc_srv_manager/client/%.js,$(WEB_SRC_TS))
+# WEB_DIST_HTML = $(patsubst client/src/%.template.html,mc_srv_manager/client/%.html,$(WEB_SRC_HTML))
+# WEB_DIST_CSS = $(patsubst client/src/%.scss,mc_srv_manager/client/%.css,$(WEB_SRC_SASS))
+# WEB_DIST_ASSETS = $(patsubst client/src/assets/%,mc_srv_manager/client/assets/%,$(WEB_ASSETS))
+# WEB_DIST = $(WEB_DIST_JS) $(WEB_DIST_HTML) $(WEB_DIST_CSS) $(WEB_DIST_ASSETS)
 
-WEB_DEV_JS = $(patsubst client/src/%.ts,client/dist/%.js,$(WEB_SRC_TS))
-WEB_DEV_HTML = $(patsubst client/src/%.template.html,client/dist/%.html,$(WEB_SRC_HTML))
-WEB_DEV_CSS = $(patsubst client/src/%.scss,client/dist/%.css,$(WEB_SRC_SASS))
-WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSETS))
+# WEB_DEV_JS = $(patsubst client/src/%.ts,client/dist/%.js,$(WEB_SRC_TS))
+# WEB_DEV_HTML = $(patsubst client/src/%.template.html,client/dist/%.html,$(WEB_SRC_HTML))
+# WEB_DEV_CSS = $(patsubst client/src/%.scss,client/dist/%.css,$(WEB_SRC_SASS))
+# WEB_DEV_ASSETS = $(patsubst client/src/assets/%,client/dist/assets/%,$(WEB_ASSETS))
 WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
 
 
@@ -32,10 +32,10 @@ TESTS_PY = $(wildcard tests/*.py) $(wildcard tests/**/*.py)
 
 
 # HTML TEMPLATES DEPENDENCIES
-mc_srv_manager/client/account/index.html:   client/src/metadata.template client/src/header/header.template
-mc_srv_manager/client/dashboard/index.html: client/src/metadata.template client/src/header/header.template
-mc_srv_manager/client/server/index.html:    client/src/metadata.template client/src/header/header.template
-mc_srv_manager/client/login/index.html:     client/src/metadata.template client/src/header/header.template
+# mc_srv_manager/client/account/index.html:   client/src/metadata.template client/src/header/header.template
+# mc_srv_manager/client/dashboard/index.html: client/src/metadata.template client/src/header/header.template
+# mc_srv_manager/client/server/index.html:    client/src/metadata.template client/src/header/header.template
+# mc_srv_manager/client/login/index.html:     client/src/metadata.template client/src/header/header.template
 
 
 
@@ -67,20 +67,20 @@ $(PYTHON_LIB)/build:
 print-%:
 	@echo $* = $($*)
 
-mc_srv_manager/client/%.html: client/src/%.template.html
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@$(PYTHON) html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
+# mc_srv_manager/client/%.html: client/src/%.template.html
+# 	@mkdir -p $(@D)
+# 	@echo "Compiling $< to $@"
+# 	@$(PYTHON) html_template.py client/src $(subst .template.html,,$(subst client/src/,,$<)) -o $@
 
-mc_srv_manager/client/%.js: client/src/%.ts
-	@mkdir -p $(dir $@)
-	@echo "Compiling $< to $@"
-	@tsc --outDir mc_srv_manager/client $< --module es6 --target es6 --strict
+# mc_srv_manager/client/%.js: client/src/%.ts
+# 	@mkdir -p $(dir $@)
+# 	@echo "Compiling $< to $@"
+# 	@tsc --outDir mc_srv_manager/client $< --module es6 --target es6 --strict
 
-mc_srv_manager/client/%.css: client/src/%.scss
-	@mkdir -p $(@D)
-	@echo "Compiling $< to $@"
-	@sass $< $@ --no-source-map
+# mc_srv_manager/client/%.css: client/src/%.scss
+# 	@mkdir -p $(@D)
+# 	@echo "Compiling $< to $@"
+# 	@sass $< $@ --no-source-map
 
 mc_srv_manager/%.py: server/src/%.py
 	@mkdir -p $(@D)
@@ -92,17 +92,20 @@ mc_srv_manager/%.json: server/src/%.json
 	@echo "Copying $< to $@"
 	@cp $< $@
 
-mc_srv_manager/client/assets/%: client/src/assets/%
-	@mkdir -p $(@D)
-	@echo "Copying $< to $@"
-	@cp $< $@
+# mc_srv_manager/client/assets/%: client/src/assets/%
+# 	@mkdir -p $(@D)
+# 	@echo "Copying $< to $@"
+# 	@cp $< $@
 
 mc_srv_manager/%: server/src/%
 	@mkdir -p $(@D)
 	@echo "Copying $< to $@"
 	@cp $< $@
 
-dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
+dist:
+	mkdir -p dist
+
+dist/$(WHEEL): $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build dist # $(WEB_DIST)
 	mkdir -p $(TEMP_DIR)
 	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --wheel --version $(VERSION_STR)
 	mkdir -p dist
@@ -110,7 +113,7 @@ dist/$(WHEEL): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)
 	rm -rf $(TEMP_DIR)
 	@echo "Building wheel package complete."
 
-dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build
+dist/$(ARCHIVE): $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LIB)/build dist # $(WEB_DIST) 
 	mkdir -p $(TEMP_DIR)
 	$(PYTHON) build_package.py --outdir $(TEMP_DIR) --sdist --version $(VERSION_STR)
 	mkdir -p dist
@@ -118,20 +121,20 @@ dist/$(ARCHIVE): $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(PYTHON_LI
 	rm -rf $(TEMP_DIR)
 	@echo "Building archive package complete."
 
-$(APP_EXECUTABLE) : $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) dist/$(WHEEL)
+$(APP_EXECUTABLE) : dist/$(WHEEL)
 	@echo "Installing package..."
 	@$(PYTHON) -m pip install --upgrade --force-reinstall dist/$(WHEEL)
 	@echo "Package installed."
 
 build: dist/$(WHEEL) dist/$(ARCHIVE)
 
-client: $(WEB_DIST)
+# client: $(WEB_DIST)
 
 server: $(SRV_DIST) $(CONFIG_DIST)
 
 
 
-test-report.xml: $(APP_EXECUTABLE) $(WEB_DIST) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY)
+test-report.xml: $(APP_EXECUTABLE) $(SRV_DIST) $(PYPROJECT) $(CONFIG_DIST) $(TESTS_PY) # $(WEB_DIST) 
 	$(PYTHON) -m pytest --junitxml=test-report.xml tests
 
 

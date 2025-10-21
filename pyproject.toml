@@ -54,11 +54,11 @@ packages = ["mc_srv_manager",
                     "mc_srv_manager.user_interface.tk_window",
                     "mc_srv_manager.user_interface.web_server",
                 "mc_srv_manager.utils",
-                "mc_srv_manager.client",
-                    "mc_srv_manager.client.assets"
+                # "mc_srv_manager.client",
+                #     "mc_srv_manager.client.assets"
             ]
 package-data = { "mc_srv_manager" = [
-    "client/**",
+    # "client/**",
     "config.json",
     "minecraft/properties.xml",
     "bus/events.xml",
