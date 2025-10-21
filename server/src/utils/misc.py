@@ -1,21 +1,9 @@
 import datetime as dt
 import random
 
-from gamuLogger import Logger, debug_func
+from gamuLogger import Logger
 
 Logger.set_module("Utils.Misc")
-
-def str2bool(v : str) -> bool:
-    """
-    Convert a string to a boolean value.
-    """
-    if isinstance(v, bool):
-        return v
-    if v.lower() in {'yes', 'true', 't', '1'}:
-        return True
-    if v.lower() in {'no', 'false', 'f', '0'}:
-        return False
-    raise ValueError(f"Invalid boolean string: {v}")
 
 def time_from_now(delta : dt.timedelta) -> dt.datetime:
     """
@@ -23,16 +11,13 @@ def time_from_now(delta : dt.timedelta) -> dt.datetime:
     """
     return dt.datetime.now() + delta
 
-class NoLog:
-    def write(self, *_): pass
-    def flush(self): pass
 
 def __get_class_name(full_path : str) -> str:
     return full_path.split(".")[-1] if "." in full_path else full_path
 
 def _split_top_level_args(s: str) -> list[str]:
     """
-    Splits a string like 'str, dict[str, int]' into ['str', 'dict[str, int]'],
+    Splits a string like 'str, dict[str, int]' into a list: ['str', 'dict[str, int]'],
     only splitting at the top-level comma.
     """
     args = []
@@ -122,33 +107,6 @@ def split_with_nested(s: str, sep: str = ",") -> list[str]:
     if current:
         parts.append(''.join(current).strip())
     return parts
-
-
-def guess_type(filename: str) -> str:
-    """
-    Guess the MIME type of a file based on its extension.
-    """
-    mimetypes = {
-        'html': 'text/html',
-        'css': 'text/css',
-        'js': 'application/javascript',
-        'json': 'application/json',
-        'png': 'image/png',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'svg': 'image/svg+xml',
-        'webp': 'image/webp',
-        'woff': 'font/woff',
-        'woff2': 'font/woff2',
-        'ttf': 'font/ttf',
-        'otf': 'font/otf'
-    }
-    ext = filename.split('.')[-1].lower()
-    if ext not in mimetypes:
-        Logger.warning(f"Unknown file extension: {ext}, defaulting to application/octet-stream")
-        return 'application/octet-stream'
-    return mimetypes[ext]
-
 
 
 

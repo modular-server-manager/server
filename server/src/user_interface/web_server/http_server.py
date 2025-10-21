@@ -12,8 +12,7 @@ from gamuLogger import Logger
 from http_code import HttpCode as HTTP
 from version import Version
 
-from ...utils.misc import str2bool, guess_type  # must be moved to a user-interface utils module
-from ...utils.regex import RE_MC_SERVER_NAME    # must be moved to a user-interface utils module
+from .utils import str2bool, guess_type, RE_MC_SERVER_NAME
 from ..Base_interface import BaseInterface      # will be changed to be an external dependency
 from ..database.types import AccessLevel        # will be changed to be an external dependency
 

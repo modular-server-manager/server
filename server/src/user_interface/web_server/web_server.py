@@ -8,7 +8,7 @@ from gamuLogger import Logger
 from version import Version
 from typing import Any
 
-from ...utils.misc import NoLog                 # must be moved to a user-interface utils module
+from .utils import NoLog
 from .http_server import HttpServer
 from .websocket_server import WebSocketServer
 

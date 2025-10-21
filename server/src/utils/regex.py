@@ -1,7 +1,5 @@
 import re
 
-RE_MC_SERVER_NAME = re.compile(r"^[a-zA-Z0-9_]{1,16}$") # Matches Minecraft server names (1-16 characters, letters, numbers, underscores)
-
 RE_DICT_TYPE = re.compile(r"^[Dd]ict\[(.*)]$") # Matches dict types like Dict[str, int] or dict[int, str]
 RE_LIST_TYPE = re.compile(r"^[Ll]ist\[(.*)]$") # Matches list types like List[str] or list[int]
 RE_TUPLE_TYPE = re.compile(r"^[Tt]uple\[(.*)]$") # Matches tuple types like Tuple[str, int] or tuple[int, str]
