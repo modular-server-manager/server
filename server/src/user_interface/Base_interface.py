@@ -40,7 +40,7 @@ class BaseInterface:
         "on_player_pardoned": Events["PLAYERS.PARDONED"]
     }
 
-    def __init__(self, bus_data : BusData, database_path: str, key: str):
+    def __init__(self, bus_data : BusData, database_path: str):
         if hasattr(self, "_BaseInterface__bus"): # Avoid reinitializing the bus
             return
         self.__bus = Bus(bus_data)
