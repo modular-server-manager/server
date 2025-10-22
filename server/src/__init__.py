@@ -1,6 +1,6 @@
-from .user_interface import BaseInterface
-from .user_interface.database import types
+from .user_interface import BaseInterface, UserInterfaceModules
+from .user_interface.database.types import AccessLevel
 
 from .minecraft import BaseMcServer
 
-__all__ = ['BaseInterface', 'BaseMcServer', 'types']
+__all__ = ['BaseInterface', 'BaseMcServer', 'AccessLevel', 'UserInterfaceModules']
