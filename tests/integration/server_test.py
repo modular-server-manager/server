@@ -48,7 +48,7 @@ class TestRegister:
 
 
         server_process = subprocess.Popen(
-            [sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", config_file, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"],
+            [sys.executable, "-m", "modular_server_manager", "--module-level", "all:TRACE", "-c", config_file, "--log-file", f"{BASE_PATH}/temp/{name}.log:TRACE"],
             stdout=sys.stdout,
             stderr=sys.stdout
         )
@@ -103,7 +103,7 @@ class TestLogin:
         if os.path.exists(f"{BASE_PATH}/temp/server.db"):
             os.remove(f"{BASE_PATH}/temp/server.db")
 
-        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
+        server_process = subprocess.Popen([sys.executable, "-m", "modular_server_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         time.sleep(1)  # Wait for the server to start
 
         # create a test user
@@ -155,7 +155,7 @@ class TestLogout:
         if os.path.exists(f"{BASE_PATH}/temp/server.db"):
             os.remove(f"{BASE_PATH}/temp/server.db")
 
-        server_process = subprocess.Popen([sys.executable, "-m", "mc_srv_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
+        server_process = subprocess.Popen([sys.executable, "-m", "modular_server_manager", "--module-level", "all:TRACE", "-c", CONFIG_FILE, "--log-file", f"tests/end_to_end/temp/{name}.log:TRACE"])
         time.sleep(1)
         # Wait for the server to start
         # create a test user

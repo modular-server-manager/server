@@ -3,7 +3,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-mc_srv_manager/
+modular_server_manager/
 *.log
 *.md
 
