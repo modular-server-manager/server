@@ -1,5 +1,8 @@
 <?xml version="1.0" ?>
-<properties>
+<properties xmlns="http://forge-server-manager.local/properties"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://forge-server-manager.local/properties
+    https://raw.githubusercontent.com/AntoineBuirey/xml-json-schema/refs/tags/1.1.2/mc-server-manager/properties.xsd">
     <boolean name="accepts-transfers" default="disable" doc="If set to true, the server accepts transfer requests from other servers. This is used for BungeeCord and similar software." introduced="1.17.0">
         <option label="enable" value="true"/>
         <option label="disable" value="false"/>

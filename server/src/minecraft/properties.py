@@ -6,14 +6,18 @@ from xml.etree.ElementTree import Element, fromstring
 from gamuLogger import Logger
 from version import Version
 
+from ..utils.regex import RE_NUMBER
+
 CONFIG_DIR = os.path.dirname(__file__)
 
 PROPERTIES_FILE = f"{CONFIG_DIR}/properties.xml"
 
+XML_XMLNS = "{http://forge-server-manager.local/properties}"
+
 Logger.set_module('Mc Server.Properties')
 
 class PropertyOption:
-    def __init__(self, name: str, value: str, until: Version = None, introduced: Version = None):
+    def __init__(self, name: str, value: str, until: Version|None = None, introduced: Version|None = None):
         """
         Initialize a property option with a name and value.
 
@@ -45,7 +49,7 @@ class PropertyOption:
         return self.__value
 
     @property
-    def until(self) -> Version:
+    def until(self) -> Version|None:
         """
         Get the version until which the option is valid.
 
@@ -53,7 +57,7 @@ class PropertyOption:
         """
         return self.__until
     @property
-    def introduced(self) -> Version:
+    def introduced(self) -> Version|None:
         """
         Get the version in which the option was introduced.
 
@@ -79,10 +83,18 @@ class PropertyOption:
         :param element: XML element representing the option.
         :return: PropertyOption object.
         """
+        
         name = element.get('label')
         value = element.get('value')
-        until = Version.from_string(element.get('until')) if element.get('until') else None
-        introduced = Version.from_string(element.get('introduced')) if element.get('introduced') else None
+        
+        if name is None or value is None:
+            raise ValueError("Option element must have 'label' and 'value' attributes.")
+        
+        str_until = element.get('until')
+        until = Version.from_string(str_until) if str_until else None
+        
+        str_introduced = element.get('introduced')
+        introduced = Version.from_string(str_introduced) if str_introduced else None
         return cls(name, value, until, introduced)
 
 class Property:
@@ -148,7 +160,7 @@ class Property:
 
         :return: Integer value of the property.
         """
-        if self.__value.isdigit():
+        if self.__value and RE_NUMBER.match(self.__value):
             return int(self.__value)
         raise ValueError(f"Property '{self.__name}' cannot be converted to an integer.")
 
@@ -181,19 +193,30 @@ class Property:
         name = element.get('name')
         default = element.get('default')
         doc = element.get('doc')
-        introduced = Version.from_string(element.get('introduced'))
+        
+        str_introduced = element.get('introduced')
+        introduced = Version.from_string(str_introduced) if str_introduced else Version(0, 0, 0)
 
         data = {}
 
         if 'min' in element.attrib:
-            data['min'] = int(element.get('min'))
+            raw_min : str = element.get('min') or ''
+            if not RE_NUMBER.match(raw_min):
+                raise ValueError(f"Invalid 'min' attribute for property '{name}': {raw_min}")
+            data['min'] = int(raw_min)
         if 'max' in element.attrib:
-            data['max'] = int(element.get('max'))
+            raw_max = element.get('max')
+            if raw_max is None or not RE_NUMBER.match(raw_max):
+                raise ValueError(f"Invalid 'max' attribute for property '{name}': {raw_max}")
+            data['max'] = int(raw_max)
 
         if options := [
-            PropertyOption.from_xml(option) for option in element.findall('option')
+            PropertyOption.from_xml(option) for option in element.findall(f"{XML_XMLNS}option")
         ]:
             data['options'] = options
+        
+        if name is None or default is None or doc is None:
+            raise ValueError("Property element must have 'name', 'default', and 'doc' attributes.")
 
         return cls(name, default, doc, introduced, **data)
 
@@ -280,7 +303,7 @@ class Properties:
 
         root = fromstring(xml_data)
         for element in root:
-            if element.tag not in ['boolean', 'integer', 'string']:
+            if element.tag not in [f'{XML_XMLNS}boolean', f'{XML_XMLNS}integer', f'{XML_XMLNS}string']:
                 raise ValueError(f"Unknown property type: {element.tag}")
             p = Property.from_xml(element)
             self.__properties[p.name] = p
@@ -303,7 +326,7 @@ class Properties:
                 else:
                     raise ValueError(f"Unknown property: {key}")
 
-    def save(self, properties_file: str, mc_version: Version = None):
+    def save(self, properties_file: str, mc_version: Version|None = None):
         """
         Save properties to a file.
 
@@ -313,7 +336,7 @@ class Properties:
         with open(normalized_path, 'w') as file:
             file.write("#Minecraft server properties\n")
             for prop in self.properties(mc_version).values():
-                file.write(f"{prop.to_string(mc_version)}\n")
+                file.write(f"{prop.to_string(mc_version or prop.introduced)}\n")
 
     def __getitem__(self, key: str) -> Property:
         """
@@ -324,7 +347,7 @@ class Properties:
         """
         return self.__properties[key]
 
-    def properties(self, mc_version : Version = None) -> dict[str, Property]:
+    def properties(self, mc_version : Version|None = None) -> dict[str, Property]:
         """
         Get all properties.
 

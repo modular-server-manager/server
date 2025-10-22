@@ -1,9 +1,7 @@
 import os
 import sys
 from datetime import datetime
-from json import dumps as json_dumps
-from json import loads as json_loads
-from typing import Any, Callable, List
+from typing import Any, List
 from xml.etree import ElementTree as ET
 import traceback
 
@@ -228,6 +226,10 @@ def encode(data : Any, data_type : str) -> str:
         guessed_type = guess_type(data)
         encoded_data = encode(data, guessed_type)
         return f"{guessed_type}{END_OF_MEDIUM}{encoded_data}"
+    elif data_type == "NoneType":
+        if data is not None:
+            raise ValueError("Expected None for NoneType")
+        return ""
     else:
         raise ValueError(f"Unknown data type: {data_type}")
 
@@ -294,23 +296,16 @@ def decode(data: str, data_type: str) -> Any:
             value = decode(value_str, value_type)
             result[key] = value
         return result
+    elif data_type == "NoneType":
+        if data != "":
+            raise ValueError("Expected empty string for NoneType")
+        return None
     else:
         raise ValueError(f"Unknown data type: {data_type}")
         
         
 
-class EventArg:
-    # type_map : dict[str, tuple[Callable[[str], Any], Callable[[Any], str]]] = { # from_string, to_string
-    #     "int":          (int, str),
-    #     "float":        (float, str),
-    #     "str":          (str, str),
-    #     "string":       (str, str),
-    #     "Version":      (Version.from_string, str),
-    #     "bool":         (lambda s: s == "t", lambda v: "t" if v else "f"),
-    #     "datetime":     (lambda s: datetime.fromtimestamp(int(s)), lambda v: str(int(v.timestamp()))),
-    #     "__default":    (json_loads, lambda d: json_dumps(d, ensure_ascii=False, separators=(',', ':'), default=str))
-    # }
-                
+class EventArg:   
 
     def __init__(self, name: str, type: str, id : int):
         self.name = name
@@ -323,33 +318,12 @@ class EventArg:
     def __str__(self):
         return f"{self.name}: {self.type}"
 
-    # def convert(self, value: str):
-    #     if self.type in self.type_map:
-    #         from_string, _ = self.type_map[self.type]
-    #     else:
-    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON deserializer")
-    #         from_string, _ = self.type_map["__default"]
-    #     try:
-    #         return from_string(value)
-    #     except Exception as e:
-    #         raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
-
-    # def to_string(self, value: Any) -> str:
-    #     if self.type in self.type_map:
-    #         _, to_string = self.type_map[self.type]
-    #     else:
-    #         Logger.warning(f"Unknown type {self.type} for argument {self.name}, using default JSON serializer")
-    #         _, to_string = self.type_map["__default"]
-    #     try:
-    #         return to_string(value)
-    #     except Exception as e:
-    #         raise TypeError(f"Failed to convert value '{value}' to string for argument {self.name}: {e}") from e
-    
     def convert(self, value: str) -> Any:
         try:
             return decode(value, self.type)
         except Exception as e:
             raise TypeError(f"Failed to convert value '{value}' to type {self.type} for argument {self.name}: {e}") from e
+
     def to_string(self, value: Any) -> str:
         try:
             return encode(value, self.type)
@@ -438,7 +412,7 @@ class EventsType:
         Logger.info(f"Loaded {len(self.events)} events from XML file.")
 
     def __parse_namespace(self, namespace : ET.Element, namespace_name: str):
-        Logger.debug(f"Parsing namespace: {namespace_name}")
+        Logger.trace(f"Parsing event namespace: {namespace_name}")
         for sub_namespace in namespace.findall(f'{XML_XMLNS}namespace'):
             self.__parse_namespace(
                 sub_namespace,
@@ -455,7 +429,7 @@ class EventsType:
             ]
 
             return_type = event.find(f'{XML_XMLNS}return').get('type') #type: ignore
-            Logger.debug(f"Registering event: {event_name} (ID: {event_id})")
+            Logger.trace(f"Registering event: {event_name} (ID: {event_id})")
             if event_id in self.events:
                 Logger.warning(f"Event ID {event_id} already exists, overwriting: {self.events[event_id].name} -> {event_name}")
             self.events[event_id] = Event(event_name, event_id, args, return_type) #type: ignore

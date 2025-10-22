@@ -7,9 +7,9 @@ from typing import Any, Dict
 from gamuLogger import Levels, Logger
 from version import Version
 
-from mc_srv_manager.bus import Bus, BusData, Events
-from mc_srv_manager.bus.bus_dispatcher import BusDispatcher
-from mc_srv_manager.minecraft.forge.web_interface import WebInterface
+from modular_server_manager.bus import Bus, BusData, Events
+from modular_server_manager.bus.bus_dispatcher import BusDispatcher
+from modular_server_manager.minecraft.forge.web_interface import WebInterface
 
 # create a BusDispatcher, start it in a separate thread
 # then create some Bus instances, each one in a separate process

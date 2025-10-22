@@ -59,8 +59,9 @@ class Bus:
                 return_str = str(annotations["return"])
         else:
             return_str = "None"
-        if not is_types_equals(str(return_str), event.return_type):
-            raise ValueError(f"Callback for event {event.name} should return {event.return_type} (got {return_str})")
+        event_return_type = event.return_type
+        if not is_types_equals(return_str, event_return_type):
+            raise ValueError(f"Callback for event {event.name} should return {event_return_type} (got {return_str})")
         for arg in event.args:
             if arg.name not in annotations:
                 raise ValueError(f"Callback for event {event.name} is missing argument {arg.name}")
@@ -237,7 +238,7 @@ class Bus:
                             except Exception as e:
                                 Logger.error(f"Error processing event {event.name} with args {args}: {e.__class__.__name__} : {e}")
                                 Logger.debug(traceback.format_exc())
-                        t = th.Thread(target=a, daemon=True, name=f"BusCallback-{event.name}")
+                        t = th.Thread(target=a, daemon=True, name=f"BusCB-{event.name}")
                         Logger.trace(f"Starting thread for event {event.name} with args {args}\nthread hash: {t.__hash__()}\nthread name: {t.name}")
                         t.start()
                     else:

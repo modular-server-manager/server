@@ -15,14 +15,14 @@ from ..bus import Bus, BusDispatcher, Events
 from ..utils.misc import gen_id
 from ..minecraft import (McInstallersModules, McServersModules, McInstallersUrls,
                          BaseMcServer, ServerStatus, WebInterface)
-from ..user_interface import BaseInterface, UserInterfaceModules
+from ..user_interface import UserInterfaceModules
 
 Logger.set_module("Core.Core")
 
 class Core:
     def __init__(self, config_file: str):
         Logger.info("Initializing Core")
-        self.__config = JSONConfig(config_file)
+        self.__config = JSONConfig(config_file, True)
         self.__running = False
 
         # Initialize the bus dispatcher (will run in a separate thread)
@@ -148,21 +148,6 @@ class Core:
             else:
                 Logger.info(f"User interface module {config['name']} initiated and started successfully.")
 
-    # def __start_user_interfaces(self):
-    #     """
-    #     Starts all user interface modules.
-    #     This method is called when the core is started.
-    #     """
-    #     Logger.info("Starting user interface modules...")
-    #     self.__init_user_interfaces()
-    #     for ui_name, ui_process in self.__ui_processes.items():
-    #         if not ui_process.is_alive():
-    #             Logger.info(f"Starting user interface process {ui_name}...")
-    #             ui_process.start()
-    #             Logger.info(f"User interface process {ui_name} started with PID {ui_process.pid}.")
-    #         else:
-    #             Logger.warning(f"User interface process {ui_name} is already running with PID {ui_process.pid}.")
-
     def __stop_user_interfaces(self):
         """
         Stops all user interface modules.
@@ -210,7 +195,12 @@ class Core:
             mc_version = Version.from_string(mc_version_raw)
             
             def __start_mc_server():
-                srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                try:
+                    srv = Server(server_name, server_path, ram, mc_version, bus_data)
+                except Exception as e:
+                    Logger.error(f"Failed to initialize server {server_name}: {e}")
+                    Logger.debug(traceback.format_exc())
+                    return
                 srv.start()
             p = mp.Process(
                 target=__start_mc_server,

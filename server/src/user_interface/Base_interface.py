@@ -21,6 +21,7 @@ class BaseInterface:
     It also provides methods to trigger events and handle callbacks.
     The list of callbacks is defined in the `callback_map` dictionary, which maps method names to events.
     """
+
     callback_map: dict[str, Event] = {
         "on_server_starting": Events["SERVER.STARTING"],
         "on_server_started": Events["SERVER.STARTED"],
@@ -39,7 +40,7 @@ class BaseInterface:
         "on_player_pardoned": Events["PLAYERS.PARDONED"]
     }
 
-    def __init__(self, bus_data : BusData, database_path: str):
+    def __init__(self, bus_data : BusData, database_path: str, key: str):
         if hasattr(self, "_BaseInterface__bus"): # Avoid reinitializing the bus
             return
         self.__bus = Bus(bus_data)

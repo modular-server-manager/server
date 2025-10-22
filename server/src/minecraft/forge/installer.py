@@ -1,11 +1,9 @@
 import os
-import secrets
 import subprocess
 
 from gamuLogger import Logger
 from version import Version
 
-from ..properties import Properties
 from ..vanilla.installer import set_eula, set_server_properties
 
 Logger.set_module("Mc Server.Forge Installer")

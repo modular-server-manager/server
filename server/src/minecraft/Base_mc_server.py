@@ -62,7 +62,7 @@ class BaseMcServer(ABC):
         self.__name = name
         self.__path = path
         self._ServerStatus = ServerStatus.STOPPED
-        self.__started_at : datetime = None
+        self.__started_at : datetime|None = None
         self.__register_callbacks()
 
     @property
@@ -149,7 +149,7 @@ class BaseMcServer(ABC):
         return self.__path
     
     @property
-    def started_at(self) -> datetime:
+    def started_at(self) -> datetime|None:
         """
         Get the datetime when the server was started.
         :return: The datetime when the server was started, or None if the server has not been started.
@@ -165,6 +165,7 @@ class BaseMcServer(ABC):
             Logger.info(f"Server {self.name} received ping at {timestamp}.")
             return self.status.name
         Logger.debug(f"Ping received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
+        return None # type: ignore[return]
 
     def __register_callbacks(self):
         for callback_name, event_name in self.available_callbacks.items():
@@ -188,19 +189,4 @@ class BaseMcServer(ABC):
         if server_name == self.name:
             return self.__started_at
         Logger.debug(f"Started at event received for server {server_name}, but this is not the current server ({self.name}). Ignoring.")
-        return None
-
-
-def main():
-    from datetime import datetime
-
-    # example usage
-    class ExampleServer(BaseMcServer):
-        def on_server_start(self, timestamp: datetime, server_name: str) -> None:
-            if server_name == self.name:
-                #start the server
-                print(f"Server started at {timestamp}")
-
-    srv = ExampleServer("TestServer", "/path/to/server")
-
-    Bus().trigger(Events["SERVER.START"], server_name="TestServer")
+        return None # type: ignore[return]
