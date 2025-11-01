@@ -4,8 +4,6 @@ all: build
 
 TEMP_DIR = build
 
-WEB_DEV_DIST = $(WEB_DEV_JS) $(WEB_DEV_HTML) $(WEB_DEV_CSS) $(WEB_DEV_ASSETS)
-
 
 SRV_SRC = $(shell find server/src -type f -name "*.py") server/src/minecraft/properties.xml server/src/bus/events.xml server/src/events_descriptions.json
 SRV_DIST = $(patsubst server/src/%,modular_server_manager/%,$(SRV_SRC))
