@@ -4,6 +4,8 @@ import traceback
 
 from gamuLogger import Logger, config_argparse, config_logger
 
+from . import __all__ # load all server modules to avoid loading them later from a submodule
+
 Logger.show_pid()
 Logger.show_threads_name()
 

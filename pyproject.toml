@@ -1,6 +1,6 @@
 [project]
 name = "modular-server-manager"
-version = "0.1.3"
+version = "0.1.5"
 description = "Modular Server Manager"
 authors = [
     { name = "Antoine BUIREY", email = "antoine.buirey@gmail.com" }

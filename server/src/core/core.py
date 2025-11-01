@@ -11,11 +11,11 @@ from config import JSONConfig
 from gamuLogger import Logger
 from version import Version
 
+from .submodules import import_all_interfaces
 from ..bus import Bus, BusDispatcher, Events
 from ..utils.misc import gen_id
 from ..minecraft import (McInstallersModules, McServersModules, McInstallersUrls,
                          BaseMcServer, ServerStatus, WebInterface)
-from ..user_interface import UserInterfaceModules
 
 Logger.set_module("Core.Core")
 
@@ -112,10 +112,13 @@ class Core:
         if self.__config.get("user_interface_modules", {}, True) == {}:
             Logger.warning("No user interface modules configured.")
             return
+        
+        user_interface_modules = import_all_interfaces()
+        
         to_load : dict[str, dict[str, Any]] = self.__config.get("user_interface_modules") #type: ignore
         for module_type, config in to_load.items():
             Logger.info(f"Initializing user interface module {config['name']} of type {module_type}...")
-            if module_type not in UserInterfaceModules:
+            if module_type not in user_interface_modules:
                 Logger.warning(f"User interface module {module_type} unknown. Skipping.")
                 continue
             if not config['enabled']:
@@ -128,7 +131,7 @@ class Core:
             module_conf.pop("name")  # Remove 'name' key
             module_conf["database_path"] = self.__config.get("client_database_path")
             try:
-                module_class = UserInterfaceModules[module_type]
+                module_class = user_interface_modules[module_type]
                 def __start_ui_module():
                     module_instance = module_class(bus_data=bus_data, **module_conf)
                     module_instance.start()
