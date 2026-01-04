@@ -17,7 +17,7 @@ dependencies = [
     "idna==3.10",
     "requests>=2.32.4",
     "soupsieve==2.7",
-    "typing_extensions==4.13.2",
+    "typing_extensions==4.15.0",
     "urllib3==2.6.0",
     "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/cache-1.1.6-py3-none-any.whl",
     "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/config-1.1.6-py3-none-any.whl",
