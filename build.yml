@@ -1,0 +1,51 @@
+vars:
+  build_tools: $(realpath ${PROJECT_DIR}/../build-tools)
+  version: $(${PYTHON} ${build_tools}/get_version.py ${PROJECT_DIR}) 
+  package_name: $(echo ${name} | tr '-' '_')
+  build_dir: ${PROJECT_DIR}/${package_name}
+  dist_dir: ${PROJECT_DIR}/dist
+
+
+files-groups:
+  source-files:
+    - ${PROJECT_DIR}/server/src/**/*.py
+    - ${PROJECT_DIR}/pyproject.toml
+    - ${PROJECT_DIR}/server/src/**/*.json
+    - ${PROJECT_DIR}/server/src/**/*.xml
+
+
+rules:
+  build-package:
+    tags:
+      - build
+    required-files: source-files
+    expected-files:
+      - dist/${package_name}-${version}.tar.gz
+      - dist/${package_name}-${version}-py3-none-any.whl
+    commands:
+      - cp -r ${PROJECT_DIR}/src ${build_dir}
+      - ${PYTHON} ${build_tools}/create_metadata.py ${build_dir} -v ${version}
+      - MSM_VERSION=${version} ${PYTHON} -m build --wheel --sdist --outdir ${dist_dir} ${PROJECT_DIR}
+      - rm -rf ${build_dir}
+
+  # install-editable:
+  #   tags:
+  #     - dev-setup
+  #   required-files: source-files
+  #   commands:
+  #     - $(PYTHON) -m pip install -e ${PROJECT_DIR}
+
+  # install:
+  #   tags:
+  #     - setup
+  #   required-files:
+  #     - dist/${package_name}-${version}.py3-none-any.whl
+  #   commands:
+  #     - $(PYTHON) -m pip install dist/${package_name}-${version}.py3-none-any.whl
+
+  # tests:
+  #   tags:
+  #     - test
+  #   required-files: source-files
+  #   commands:
+  #     - $(PYTHON) -m unittest discover -s tests

@@ -1,6 +1,6 @@
 [project]
 name = "modular-server-manager"
-version = "0.1.5"
+dynamic = ["version"]
 description = "Modular Server Manager"
 authors = [
     { name = "Antoine BUIREY", email = "antoine.buirey@gmail.com" }
@@ -29,27 +29,40 @@ modular-server-manager = "modular_server_manager.__main__:main"
 modular-server-manager-event-decoder = "modular_server_manager.decode_event:main"
 modular-server-manager-doc-gen = "modular_server_manager.gen_doc:main"
 
-[tool.setuptools]
-packages = ["modular_server_manager",
-                "modular_server_manager.bus",
-                "modular_server_manager.core",
-                "modular_server_manager.minecraft",
-                    "modular_server_manager.minecraft.forge",
-                    "modular_server_manager.minecraft.vanilla",
-                "modular_server_manager.user_interface",
-                    "modular_server_manager.user_interface.database",
-                "modular_server_manager.utils",
-            ]
-package-data = { "modular_server_manager" = [
-    "config.json",
-    "minecraft/properties.xml",
-    "bus/events.xml",
-    "events_descriptions.json",
-] }
-include-package-data = true
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = [
-    "tests"
+[tool.hatch.build.targets.wheel]
+ignore-vcs = true
+include = [
+    "modular_server_manager",
 ]
+
+[tool.hatch.build.targets.sdist]
+ignore-vcs = true
+include = [
+    "modular_server_manager",
+]
+
+[tool.hatch.version]
+source = "env"
+variable = "MSM_VERSION"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# [tool.hatch.build]
+# include = [
+#     # "modular_server_manager/config.json",
+#     # "modular_server_manager/minecraft/properties.xml",
+#     # "modular_server_manager/bus/events.xml",
+#     # "modular_server_manager/events_descriptions.json",
+#     "modular_server_manager",
+# ]
+
+# [tool.pytest.ini_options]
+# minversion = "8.0"
+# testpaths = [
+#     "tests"
+# ]
