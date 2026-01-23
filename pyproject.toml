@@ -16,7 +16,7 @@ dependencies = [
     "gamuLogger>=3.2.4",
     "idna==3.11",
     "requests>=2.32.4",
-    "soupsieve==2.7",
+    "soupsieve==2.8.3",
     "typing_extensions==4.15.0",
     "urllib3==2.6.0",
     "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/cache-1.1.6-py3-none-any.whl",
