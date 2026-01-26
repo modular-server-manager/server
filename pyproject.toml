@@ -16,9 +16,9 @@ dependencies = [
     "gamuLogger>=3.2.4",
     "idna==3.11",
     "requests>=2.32.4",
-    "soupsieve==2.7",
-    "typing_extensions==4.15.0",
-    "urllib3==2.6.0",
+    "soupsieve>=2.7",
+    "typing_extensions>=4.15.0",
+    "urllib3>=2.6.0",
     "cache @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/cache-1.1.6-py3-none-any.whl",
     "config @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/config-1.1.6-py3-none-any.whl",
     "version @ https://github.com/T0ine34/python-sample/releases/download/1.1.6/version-1.1.6-py3-none-any.whl",
@@ -26,8 +26,9 @@ dependencies = [
 
 [project.scripts]
 modular-server-manager = "modular_server_manager.__main__:main"
-modular-server-manager-event-decoder = "modular_server_manager.decode_event:main"
-modular-server-manager-doc-gen = "modular_server_manager.gen_doc:main"
+msm-event-decoder = "modular_server_manager.decode_event:main"
+msm-doc-gen = "modular_server_manager.gen_doc:main"
+msm-list-events = "modular_server_manager.list_events:main"
 
 [build-system]
 requires = ["hatchling"]

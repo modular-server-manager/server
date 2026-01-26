@@ -8,10 +8,10 @@ vars:
 
 files-groups:
   source-files:
-    - ${PROJECT_DIR}/server/src/**/*.py
+    - ${PROJECT_DIR}/src/**/*.py
     - ${PROJECT_DIR}/pyproject.toml
-    - ${PROJECT_DIR}/server/src/**/*.json
-    - ${PROJECT_DIR}/server/src/**/*.xml
+    - ${PROJECT_DIR}/src/**/*.json
+    - ${PROJECT_DIR}/src/**/*.xml
 
 
 rules:
@@ -20,8 +20,8 @@ rules:
       - build
     required-files: source-files
     expected-files:
-      - dist/${package_name}-${version}.tar.gz
-      - dist/${package_name}-${version}-py3-none-any.whl
+      - ${PROJECT_DIR}/dist/${package_name}-${version}.tar.gz
+      - ${PROJECT_DIR}/dist/${package_name}-${version}-py3-none-any.whl
     commands:
       - cp -r ${PROJECT_DIR}/src ${build_dir}
       - ${PYTHON} ${build_tools}/create_metadata.py ${build_dir} -v ${version}
@@ -33,19 +33,19 @@ rules:
   #     - dev-setup
   #   required-files: source-files
   #   commands:
-  #     - $(PYTHON) -m pip install -e ${PROJECT_DIR}
+  #     - ${PYTHON} -m pip install -e ${PROJECT_DIR}
 
-  # install:
-  #   tags:
-  #     - setup
-  #   required-files:
-  #     - dist/${package_name}-${version}.py3-none-any.whl
-  #   commands:
-  #     - $(PYTHON) -m pip install dist/${package_name}-${version}.py3-none-any.whl
+  install:
+    tags:
+      - setup
+    required-files:
+      - ${PROJECT_DIR}/dist/${package_name}-${version}-py3-none-any.whl
+    commands:
+      - ${PYTHON} -m pip install ${PROJECT_DIR}/dist/${package_name}-${version}-py3-none-any.whl --force-reinstall
 
   # tests:
   #   tags:
   #     - test
   #   required-files: source-files
   #   commands:
-  #     - $(PYTHON) -m unittest discover -s tests
+  #     - ${PYTHON} -m unittest discover -s tests

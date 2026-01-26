@@ -475,7 +475,7 @@ try:
     Events = EventsType(
         os.path.join(
             __FILE_DIR__,
-            "events.xml"
+            "events.v2.xml"
         )
     )
 except Exception as e:

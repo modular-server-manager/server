@@ -1,0 +1,438 @@
+<?xml version="1.0"?>
+<events xmlns="http://forge-server-manager.local/events"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://forge-server-manager.local/events
+    https://raw.githubusercontent.com/AntoineBuirey/xml-json-schema/refs/tags/1.2.5/modular-server-manager/events.xsd">
+    <namespace name="SERVER">
+        <namespace name="START">
+            <event name="REQUEST" id="0x0001">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="RUNNING" id="0x0002">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0003">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0004">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="STOP">
+            <event name="REQUEST" id="0x0010">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="RUNNING" id="0x0011">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0012">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0013">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="RESTART">
+            <event name="REQUEST" id="0x0020">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="RUNNING" id="0x0021">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0022">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0023">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="CREATE">
+            <event name="REQUEST" id="0x0030">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_name" type="str" id="0x02"/>
+                    <arg name="server_type" type="str" id="0x03" />
+                    <arg name="server_path" type="str" id="0x04"/>
+                    <arg name="autostart" type="bool" id="0x05"/>
+                    <arg name="mc_version" type="version" id="0x06"/>
+                    <arg name="modloader_version" type="version" id="0x07"/>
+                    <arg name="ram" type="int" id="0x08"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="RUNNING" id="0x0032">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="server_name" type="str" id="0x02"/>
+                    <arg name="server_type" type="str" id="0x03" />
+                    <arg name="server_path" type="str" id="0x04"/>
+                    <arg name="autostart" type="bool" id="0x05"/>
+                    <arg name="mc_version" type="version" id="0x06"/>
+                    <arg name="modloader_version" type="version" id="0x07"/>
+                    <arg name="ram" type="int" id="0x08"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0033">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="server_name" type="str" id="0x02"/>
+                    <arg name="server_type" type="str" id="0x03" />
+                    <arg name="server_path" type="str" id="0x04"/>
+                    <arg name="autostart" type="bool" id="0x05"/>
+                    <arg name="mc_version" type="version" id="0x06"/>
+                    <arg name="modloader_version" type="version" id="0x07"/>
+                    <arg name="ram" type="int" id="0x08"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0034">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="DELETE">
+            <event name="REQUEST" id="0x0040">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0042">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0043">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="UPDATE_INFO">
+            <event name="REQUEST" id="0x0050">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="key" type="str" id="0x03"/>
+                    <arg name="value" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x0052">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="key" type="str" id="0x03"/>
+                    <arg name="value" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x0053">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <event name="PING" id="0x0060">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+            </args>
+            <return type="str" />
+        </event>
+        <event name="INFO" id="0x0070">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+            </args>
+            <return type="dict[str, any]" />
+        </event>
+    </namespace>
+    <namespace name="CONSOLE">
+        <namespace name="SEND_CMD">
+            <event name="REQUEST" id="0x1001">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="command" type="str" id="0x03"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x1002">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="command" type="str" id="0x03"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x1003">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="SEND_MSG">
+            <event name="REQUEST" id="0x1011">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="from" type="str" id="0x03"/>
+                    <arg name="message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x1012">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="from" type="str" id="0x03"/>
+                    <arg name="message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x1013">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="error_code" type="int" id="0x03"/>
+                    <arg name="error_message" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <event name="MESSAGE_RECEIVED" id="0x1020">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+                <arg name="from" type="str" id="0x03"/>
+                <arg name="message" type="str" id="0x04"/>
+            </args>
+            <return type="none" />
+        </event>
+        <event name="LOG_RECEIVED" id="0x1030">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+                <arg name="message" type="str" id="0x03"/>
+            </args>
+            <return type="none" />
+        </event>
+    </namespace>
+    <namespace name="PLAYERS">
+        <namespace name="KICK">
+            <event name="REQUEST" id="0x2001">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="reason" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x2002">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="reason" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x2003">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="error_code" type="int" id="0x04"/>
+                    <arg name="error_message" type="str" id="0x05"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="BAN">
+            <event name="REQUEST" id="0x2011">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="reason" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x2012">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="reason" type="str" id="0x04"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x2013">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="error_code" type="int" id="0x04"/>
+                    <arg name="error_message" type="str" id="0x05"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <namespace name="PARDON">
+            <event name="REQUEST" id="0x2021">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="DONE" id="0x2022">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                </args>
+                <return type="none" />
+            </event>
+            <event name="ERROR" id="0x2023">
+                <args>
+                    <arg name="timestamp" type="datetime" id="0x01"/>
+                    <arg name="server_id" type="str" id="0x02"/>
+                    <arg name="player_name" type="str" id="0x03"/>
+                    <arg name="error_code" type="int" id="0x04"/>
+                    <arg name="error_message" type="str" id="0x05"/>
+                </args>
+                <return type="none" />
+            </event>
+        </namespace>
+        <event name="JOINED" id="0x2030">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+                <arg name="player_name" type="str" id="0x03"/>
+            </args>
+            <return type="none" />
+        </event>
+        <event name="LEFT" id="0x2040">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+                <arg name="player_name" type="str" id="0x03"/>
+            </args>
+            <return type="none" />
+        </event>
+    </namespace>
+    <namespace name="INFO">
+        <event name="GET_MC_VERSIONS" id="0x3001">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+            </args>
+            <return type="list[version]" />
+        </event>
+        <event name="GET_FORGE_VERSIONS" id="0x3002">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="mc_version" type="version" id="0x02"/>
+            </args>
+            <return type="list[version]" />
+        </event>
+        <event name="GET_DIRECTORIES" id="0x3003">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+            </args>
+            <return type="list[str]" />
+        </event>
+        <event name="GET_SERVER_LIST" id="0x3004">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+            </args>
+            <return type="list[dict[str, any]]" />
+        </event>
+        <event name="GET_PLAYERS_LIST" id="0x3005">
+            <args>
+                <arg name="timestamp" type="datetime" id="0x01"/>
+                <arg name="server_id" type="str" id="0x02"/>
+            </args>
+            <return type="list[str]" />
+        </event>
+    </namespace>
+</events>

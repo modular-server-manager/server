@@ -20,24 +20,26 @@ class BaseInterface:
     It uses a bus to communicate with the server and a database to store user information.
     It also provides methods to trigger events and handle callbacks.
     The list of callbacks is defined in the `callback_map` dictionary, which maps method names to events.
+    You can also define a method named `default_callback` to handle events that don't have a method explicitly defined.
+    This default method must take the event name as the first parameter, followed by any number of keyword arguments.
     """
 
     callback_map: dict[str, Event] = {
-        "on_server_starting": Events["SERVER.STARTING"],
-        "on_server_started": Events["SERVER.STARTED"],
-        "on_server_stopping": Events["SERVER.STOPPING"],
-        "on_server_stopped": Events["SERVER.STOPPED"],
-        "on_server_crashed": Events["SERVER.CRASHED"],
-        "on_server_created": Events["SERVER.CREATED"],
-        "on_server_deleted": Events["SERVER.DELETED"],
-        "on_server_renamed": Events["SERVER.RENAMED"],
-        "on_console_message_received": Events["CONSOLE.MESSAGE_RECEIVED"],
-        "on_console_log_received": Events["CONSOLE.LOG_RECEIVED"],
-        "on_player_joined": Events["PLAYERS.JOINED"],
-        "on_player_left": Events["PLAYERS.LEFT"],
-        "on_player_kicked": Events["PLAYERS.KICKED"],
-        "on_player_banned": Events["PLAYERS.BANNED"],
-        "on_player_pardoned": Events["PLAYERS.PARDONED"]
+        # "on_server_starting": Events["SERVER.STARTING"],
+        # "on_server_started": Events["SERVER.STARTED"],
+        # "on_server_stopping": Events["SERVER.STOPPING"],
+        # "on_server_stopped": Events["SERVER.STOPPED"],
+        # "on_server_crashed": Events["SERVER.CRASHED"],
+        # "on_server_created": Events["SERVER.CREATED"],
+        # "on_server_deleted": Events["SERVER.DELETED"],
+        # "on_server_renamed": Events["SERVER.RENAMED"],
+        # "on_console_message_received": Events["CONSOLE.MESSAGE_RECEIVED"],
+        # "on_console_log_received": Events["CONSOLE.LOG_RECEIVED"],
+        # "on_player_joined": Events["PLAYERS.JOINED"],
+        # "on_player_left": Events["PLAYERS.LEFT"],
+        # "on_player_kicked": Events["PLAYERS.KICKED"],
+        # "on_player_banned": Events["PLAYERS.BANNED"],
+        # "on_player_pardoned": Events["PLAYERS.PARDONED"]
     }
 
     def __init__(self, bus_data : BusData, database_path: str):
@@ -57,8 +59,17 @@ class BaseInterface:
                     self.__bus.register(event, callback)
                 else:
                     Logger.warning(f"Method {method_name} is not callable. Skipping subscription.")
+            elif hasattr(self, "default_callback"):
+                default_callback : Callback = getattr(self, "default_callback")
+                if callable(default_callback):
+                    def wrapper(**kwargs):
+                        return default_callback(event.name, **kwargs)
+                    self.__bus.register(event, wrapper)
+                else:
+                    Logger.warning(f"Default callback is not callable. Skipping subscription for event {event.name}.")
             else:
-                Logger.trace(f"Method {method_name} not found in {self.__class__.__name__}. Skipping subscription.")
+                Logger.trace(f"Method {method_name} or default callback not found in {self.__class__.__name__}. Skipping subscription.")
+                
 
     def trigger(self, event_name: str, **kwargs):
         """
@@ -89,6 +100,23 @@ class BaseInterface:
         self.__bus.stop()
         Logger.info(f"{self.__class__.__name__} interface stopped.")
 
+
+    def has_required_permissions(self, access_token : AccessToken, required_level : AccessLevel) -> bool:
+        """
+        Check if the user associated with the given token has the required access level.
+        """
+        try:
+            if not access_token or not access_token.is_valid():
+                raise ValueError("Invalid or expired token.")
+
+            user = self._database.get_user(access_token.username)
+            if not user:
+                raise ValueError(f"User {access_token.username} does not exist.")
+
+            return user.access_level >= required_level
+        except Exception as e:
+            Logger.debug(f"Permission check failed: {e}")
+            return False
 
 ####################################### User database methods #####################################
 
@@ -214,10 +242,16 @@ class BaseInterface:
         self._database.update_user(user)
         Logger.debug(f"Password for user {user.username} updated successfully.")
 
-    def get_user_info_by_username(self, username: str) -> User:
+    def get_user_info_by_username(self, token : str,  username: str) -> User:
         """
         Get user information by username.
+        Mus be at least OPERATOR level to use this method.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.OPERATOR):
+            Logger.warning(f"User {access_token.username} attempted to get user info by username without sufficient permissions.")
+            raise ValueError("Insufficient permissions to get user info by username. This incident will be reported.")
+        
         if not username:
             raise ValueError("Missing username for get_user_info_by_username.")
 
@@ -226,7 +260,12 @@ class BaseInterface:
         else:
             raise ValueError(f"User {username} does not exist.")
 
-    def update_user_access(self, username: str, access_level: str):
+    def update_user_access(self, token : str, username: str, access_level: str):
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.OPERATOR):
+            Logger.warning(f"User {access_token.username} attempted to update user access without sufficient permissions.")
+            raise ValueError("Insufficient permissions to update user access. This incident will be reported.")
+        
         if not access_level:
             raise ValueError("Missing access level for update_user_access.")
         user = self._database.get_user(username)
@@ -235,10 +274,16 @@ class BaseInterface:
         user.access_level = AccessLevel[access_level]
         self._database.update_user(user)
 
-    def update_user_password(self, username: str, password: str):
+    def update_user_password(self, token : str, username: str, password: str):
         """
         Update the password for the user with the given username.
         """
+        
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.OPERATOR):
+            Logger.warning(f"User {access_token.username} attempted to update user password without sufficient permissions.")
+            raise ValueError("Insufficient permissions to update user password. This incident will be reported.")
+        
         if not password:
             raise ValueError("Missing password for update_user_password.")
         user = self._database.get_user(username)
@@ -249,37 +294,58 @@ class BaseInterface:
 
  #################################### Minecraft server methods ####################################
 
-    def list_mc_versions(self) -> list[Version]:
+    def list_mc_versions(self, token : str) -> list[Version]:
         """
         List all available Minecraft server versions.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.USER):
+            Logger.warning(f"User {access_token.username} attempted to list Minecraft versions without sufficient permissions.")
+            raise ValueError("Insufficient permissions to list Minecraft versions. This incident will be reported.")
+        
         versions : list[Version] = self.trigger("GET_VERSIONS.MINECRAFT")
         return versions
 
-    def list_forge_versions(self, mc_version: Version) -> list[Version]:
+    def list_forge_versions(self, token: str, mc_version: Version) -> list[Version]:
         """
         List all available Forge versions for the given Minecraft version.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.USER):
+            Logger.warning(f"User {access_token.username} attempted to list Forge versions without sufficient permissions.")
+            raise ValueError("Insufficient permissions to list Forge versions. This incident will be reported.")
+        
         versions = self.trigger("GET_VERSIONS.FORGE", mc_version=mc_version)
         return versions
 
-    def list_servers(self) -> list[Dict[str, Any]]:
+    def list_servers(self, token: str) -> list[Dict[str, Any]]:
         """
         List all Minecraft servers.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.USER):
+            Logger.warning(f"User {access_token.username} attempted to list servers without sufficient permissions.")
+            raise ValueError("Insufficient permissions to list servers. This incident will be reported.")
+        
         servers = self.trigger("SERVER.LIST")
         return servers or []
 
-    def get_server_info(self, server_name: str) -> Dict[str, Any]:
+    def get_server_info(self, token : str, server_name: str) -> Dict[str, Any]:
         """
         Get information about a specific Minecraft server by its ID.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.USER):
+            Logger.warning(f"User {access_token.username} attempted to get server info without sufficient permissions.")
+            raise ValueError("Insufficient permissions to get server info. This incident will be reported.")
+        
         if server_info := self.trigger("SERVER.INFO", server_name=server_name):
             return server_info
         else:
             raise ValueError(f"Server with name {server_name} does not exist.")
 
     def create_server(self, /,
+        token : str,
         name: str,
         type: str,
         path: str,
@@ -292,6 +358,11 @@ class BaseInterface:
         Create a new Minecraft server with the given parameters.
         Returns the created server information.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.OPERATOR):
+            Logger.warning(f"User {access_token.username} attempted to create server without sufficient permissions.")
+            raise ValueError("Insufficient permissions to create server. This incident will be reported.")
+        
         if not name or not type or not path or not mc_version:
             raise ValueError("Missing parameters for create_server. Name, type, path, and Minecraft version are required.")
 
@@ -312,34 +383,54 @@ class BaseInterface:
         else:
             raise ValueError(f"Failed to create server {name}. It may already exist or there was an error in the parameters.")
 
-    def list_mc_server_dirs(self) -> list[str]:
+    def list_mc_server_dirs(self, token : str,) -> list[str]:
         """
         List all available Minecraft server directories.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.USER):
+            Logger.warning(f"User {access_token.username} attempted to list Minecraft server directories without sufficient permissions.")
+            raise ValueError("Insufficient permissions to list Minecraft server directories. This incident will be reported.")
+        
         return self.trigger("GET_DIRECTORIES.MINECRAFT") or []
 
-    def start_server(self, server_name: str) -> None:
+    def start_server(self, token : str, server_name: str) -> None:
         """
         Start a Minecraft server by its name.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.ADMIN):
+            Logger.warning(f"User {access_token.username} attempted to start server without sufficient permissions.")
+            raise ValueError("Insufficient permissions to start server. This incident will be reported.")
+        
         if not server_name:
             raise ValueError("Missing server name for start_server.")
 
         self.trigger("SERVER.START", server_name=server_name)
     
-    def stop_server(self, server_name: str) -> None:
+    def stop_server(self, token : str, server_name: str) -> None:
         """
         Stop a Minecraft server by its name.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.ADMIN):
+            Logger.warning(f"User {access_token.username} attempted to stop server without sufficient permissions.")
+            raise ValueError("Insufficient permissions to stop server. This incident will be reported.")
+        
         if not server_name:
             raise ValueError("Missing server name for stop_server.")
 
         self.trigger("SERVER.STOP", server_name=server_name)
     
-    def restart_server(self, server_name: str) -> None:
+    def restart_server(self, token : str, server_name: str) -> None:
         """
         Restart a Minecraft server by its name.
         """
+        access_token = self._database.get_user_token_by_token(token)
+        if not self.has_required_permissions(access_token, AccessLevel.ADMIN):  
+            Logger.warning(f"User {access_token.username} attempted to restart server without sufficient permissions.")
+            raise ValueError("Insufficient permissions to restart server. This incident will be reported.")
+        
         if not server_name:
             raise ValueError("Missing server name for restart_server.")
 
