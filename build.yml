@@ -1,30 +1,35 @@
+imports:
+  - path: pyproject.toml
+    as: project
+  - path: ../common.build.yml
+    as: common
+
 vars:
-  build_tools: $(realpath ${PROJECT_DIR}/../build-tools)
-  version: $(${PYTHON} ${build_tools}/get_version.py ${PROJECT_DIR}) 
-  package_name: $(echo ${name} | tr '-' '_')
+  version: $(${common.get_version} ${PROJECT_DIR}) 
+  package_name: $(echo ${project.name} | tr '-' '_')
   build_dir: ${PROJECT_DIR}/${package_name}
   dist_dir: ${PROJECT_DIR}/dist
 
 
 files-groups:
   source-files:
-    - ${PROJECT_DIR}/server/src/**/*.py
+    - ${PROJECT_DIR}/src/**/*.py
     - ${PROJECT_DIR}/pyproject.toml
-    - ${PROJECT_DIR}/server/src/**/*.json
-    - ${PROJECT_DIR}/server/src/**/*.xml
+    - ${PROJECT_DIR}/src/**/*.json
+    - ${PROJECT_DIR}/src/**/*.xml
 
 
 rules:
-  build-package:
+  build:
     tags:
       - build
     required-files: source-files
     expected-files:
-      - dist/${package_name}-${version}.tar.gz
-      - dist/${package_name}-${version}-py3-none-any.whl
+      - ${dist_dir}/${package_name}-${version}.tar.gz
+      - ${dist_dir}/${package_name}-${version}-py3-none-any.whl
     commands:
       - cp -r ${PROJECT_DIR}/src ${build_dir}
-      - ${PYTHON} ${build_tools}/create_metadata.py ${build_dir} -v ${version}
+      - ${common.create_metadata} ${build_dir} -v ${version} -p ${PROJECT_DIR}/pyproject.toml
       - MSM_VERSION=${version} ${PYTHON} -m build --wheel --sdist --outdir ${dist_dir} ${PROJECT_DIR}
       - rm -rf ${build_dir}
 
