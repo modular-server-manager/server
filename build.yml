@@ -31,7 +31,7 @@ rules:
       - cp -r ${PROJECT_DIR}/src ${build_dir}
       - ${common.create_metadata} ${build_dir} -v ${version} -p ${PROJECT_DIR}/pyproject.toml
       - MSM_VERSION=${version} ${PYTHON} -m build --wheel --sdist --outdir ${dist_dir} ${PROJECT_DIR}
-      - rm -rf ${build_dir}
+      - +ALWAYS rm -rf ${build_dir}
 
   # install-editable:
   #   tags:
